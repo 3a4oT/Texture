@@ -40,7 +40,7 @@ let package = Package(
     name: "Texture",
     platforms: [
              .macOS(.v12),
-             .iOS(.v11),
+             .iOS(.v14),
              .tvOS(.v11)
          ],
     products: [
@@ -55,7 +55,7 @@ let package = Package(
             targets: ["AsyncDisplayKitIGListKit"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/pinterest/PINRemoteImage.git", .upToNextMajor(from: "3.0.3")),
+        .package(url: "https://github.com/pinterest/PINRemoteImage.git", .upToNextMajor(from: "3.0.4")),
         .package(url: "https://github.com/Instagram/IGListKit", revision: "c2cea36534fe08e28d7c060495970785cd956593"),
     ],
     targets: [
