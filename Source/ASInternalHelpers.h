@@ -9,10 +9,10 @@
 
 #import <UIKit/UIKit.h>
 
-#import <AsyncDisplayKit/ASAvailability.h>
-#import <AsyncDisplayKit/ASBaseDefines.h>
-#import <AsyncDisplayKit/ASDisplayNodeExtras.h>
-#import <AsyncDisplayKit/ASImageProtocols.h>
+#import "ASAvailability.h"
+#import "ASBaseDefines.h"
+#import "ASDisplayNodeExtras.h"
+#import "ASImageProtocols.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
