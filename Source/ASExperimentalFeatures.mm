@@ -26,7 +26,9 @@ NSArray<NSString *> *ASExperimentalFeaturesGetNames(ASExperimentalFeatures flags
                                       @"exp_main_thread_only_data_controller",
                                       @"exp_range_update_on_changeset_update",
                                       @"exp_no_text_renderer_cache",
-                                      @"exp_lock_text_renderer_cache"]));
+                                      @"exp_lock_text_renderer_cache",
+                                      @"exp_hierarchy_display_did_finish_is_recursive",
+                                      @"exp_check_batch_fetching_on_scroll"]));
 
   if (flags == ASExperimentalFeatureAll) {
     return allNames;
