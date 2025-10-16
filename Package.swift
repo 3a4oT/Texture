@@ -39,9 +39,9 @@ func IGListKit(enabled: Bool) -> [CSetting] {
 let package = Package(
     name: "Texture",
     platforms: [
-             .macOS(.v12),
-             .iOS(.v11),
-             .tvOS(.v11)
+             .macOS(.v13),
+             .iOS(.v14),
+             .tvOS(.v14)
          ],
     products: [
         // Products define the executables and libraries a package produces, and make them visible to other packages.
@@ -55,8 +55,8 @@ let package = Package(
             targets: ["AsyncDisplayKitIGListKit"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/pinterest/PINRemoteImage.git", .upToNextMajor(from: "3.0.3")),
-        .package(url: "https://github.com/Instagram/IGListKit", revision: "c2cea36534fe08e28d7c060495970785cd956593"),
+        .package(url: "https://github.com/pinterest/PINRemoteImage.git", .upToNextMajor(from: "3.0.4")),
+        .package(url: "https://github.com/Instagram/IGListKit", .upToNextMajor(from: "5.0.0")),
     ],
     targets: [
         .target(
