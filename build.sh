@@ -267,6 +267,71 @@ carthage|all)
     success="1"
     ;;
 
+spm|all)
+    echo "Verifying Swift Package Manager works."
+
+    # Generate SPM symlinks
+    echo "Generating SPM layout..."
+    swift scripts/generate_spm_sources_layout.swift
+
+    # Build with default traits
+    echo "Building with default traits..."
+    set -o pipefail && xcodebuild \
+        -scheme AsyncDisplayKit \
+        -sdk "$SDK" \
+        -destination "$PLATFORM" \
+        clean build
+    success="1"
+    ;;
+
+spm-texture-basic)
+    echo "Testing SPMBasic example (AsyncDisplayKit without IGListKit)."
+
+    # Clean generated SPM directory to test script generation
+    echo "Cleaning generated SPM directory..."
+    rm -rf spm/Sources
+
+    # Generate SPM symlinks from scratch
+    echo "Generating SPM layout..."
+    swift scripts/generate_spm_sources_layout.swift
+
+    # Test SPMBasic example (build and test)
+    echo "Building and testing SPMBasic example..."
+    cd examples/SPMBasic
+    set -o pipefail && xcodebuild \
+        -scheme SPMBasic \
+        -sdk "$SDK" \
+        -destination "$PLATFORM" \
+        clean build test
+    cd ../..
+
+    success="1"
+    ;;
+
+spm-texture-iglistkit)
+    echo "Testing SPMWithIGListKit example (AsyncDisplayKitIGListKit product)."
+
+    # Clean generated SPM directory to test script generation
+    echo "Cleaning generated SPM directory..."
+    rm -rf spm/Sources
+
+    # Generate SPM symlinks from scratch
+    echo "Generating SPM layout..."
+    swift scripts/generate_spm_sources_layout.swift
+
+    # Test SPMWithIGListKit example (build and test)
+    echo "Building and testing SPMWithIGListKit example..."
+    cd examples/SPMWithIGListKit
+    set -o pipefail && xcodebuild \
+        -scheme SPMWithIGListKit \
+        -sdk "$SDK" \
+        -destination "$PLATFORM" \
+        clean build test
+    cd ../..
+
+    success="1"
+    ;;
+
 *)
     echo "Unrecognized mode '$MODE'."
     ;;
