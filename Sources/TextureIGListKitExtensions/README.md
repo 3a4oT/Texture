@@ -74,6 +74,99 @@ To connect them, you need special bridging code that:
 
 **This module provides that bridge in pure Swift.**
 
+## Using in iOS/tvOS App Projects
+
+### The Problem
+
+As of Xcode 26.0.1, Xcode does not provide a UI for enabling SPM package traits in iOS/tvOS app targets. Traits can only be enabled in Package.swift files, which app projects do not have.
+
+Note: If you are using a newer version of Xcode, check whether Apple has added trait configuration support in the Xcode UI.
+
+### The Solution
+
+Create an intermediate local Swift package to enable the IGListKit trait.
+
+**Step 1: Create Package Structure**
+
+Add a local package to your app project:
+
+```
+YourApp/
+├── YourApp.xcodeproj
+├── YourApp/               # Your app source code
+└── TextureWrapper/        # Local package wrapper
+    ├── Package.swift
+    └── Sources/
+        └── TextureWrapper/
+            └── TextureWrapper.swift (can be empty)
+```
+
+**Step 2: Configure Package.swift**
+
+```swift
+// swift-tools-version: 6.2
+import PackageDescription
+
+let package = Package(
+    name: "TextureWrapper",
+    platforms: [
+        .iOS(.v14),
+        .tvOS(.v14),
+        .macCatalyst(.v13)
+    ],
+    products: [
+        .library(
+            name: "TextureWrapper",
+            targets: ["TextureWrapper"]
+        )
+    ],
+    dependencies: [
+        .package(
+            url: "https://github.com/TextureGroup/Texture.git",
+            from: "3.3.0",
+            traits: [
+                .init(name: "IGListKit")  // Enable IGListKit trait
+            ]
+        )
+    ],
+    targets: [
+        .target(
+            name: "TextureWrapper",
+            dependencies: [
+                .product(name: "AsyncDisplayKit", package: "Texture"),
+                .product(name: "TextureIGListKitExtensions", package: "Texture")
+            ]
+        )
+    ]
+)
+```
+
+**Step 3: Add to Xcode Project**
+
+1. Open your Xcode project
+2. File → Add Package Dependencies → Add Local
+3. Select the `TextureWrapper` folder
+4. Add the `TextureWrapper` library to your app target
+
+**Important:** Do not add the intermediate package's Package.swift file to your Xcode project as a source file. The local package should only be referenced through Xcode's package dependencies system. If you accidentally add Package.swift to your project's source files, you will see compilation errors like "No such module 'PackageDescription'". If this happens, select Package.swift in Xcode's Project Navigator and delete it, choosing "Remove Reference" to keep the file on disk.
+
+**Step 4: Use in Your App**
+
+```swift
+import AsyncDisplayKit
+import IGListKit
+import TextureIGListKitExtensions
+
+class MyViewController: UIViewController {
+    let collectionNode = ASCollectionNode(collectionViewLayout: UICollectionViewFlowLayout())
+    lazy var adapter: ListAdapter = {
+        let adapter = ListAdapter(updater: ListAdapterUpdater(), viewController: self)
+        adapter.setCollectionNode(collectionNode)
+        return adapter
+    }()
+}
+```
+
 ## Migrating from CocoaPods
 
 If you're migrating from CocoaPods to SPM, here's what changes:
@@ -300,9 +393,24 @@ Section controllers must implement methods using `@objc` attribute:
 
 These are called via Objective-C runtime because Swift can't directly express these method signatures in protocol form (they return blocks and use Objective-C types).
 
+## Examples
+
+See working examples in the repository:
+
+- **SPMWithIGListKit** (`examples/SPMWithIGListKit`) - SPM library package with IGListKit trait enabled. Demonstrates how to create reusable Swift packages that use Texture with IGListKit.
+
+- **ASIGListKitSPM** (`examples/ASIGListKitSPM`) - Complete iOS app project demonstrating the local package wrapper approach. Shows real-world integration with section controllers using Pure Swift API.
+
+These examples demonstrate:
+- How to enable IGListKit trait in different project types
+- Pure Swift API usage with `setCollectionNode(_:)`
+- Section controllers implementing `ASSectionController` protocol
+- Runtime selector methods with `@objc` attributes
+- Complete working integration with tests
+
 ## Requirements
 
-- iOS 14.0+ / tvOS 14.0+ / macOS 13.0+
+- iOS 14.0+ / tvOS 14.0+ / Mac Catalyst 13.0+
 - Swift 6.2+
 - Texture (AsyncDisplayKit) via SPM with `IGListKit` trait enabled
 - IGListKit 5.0+
