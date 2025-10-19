@@ -104,7 +104,7 @@ YourApp/
 **Step 2: Configure Package.swift**
 
 ```swift
-// swift-tools-version: 6.2
+// swift-tools-version: 6.1
 import PackageDescription
 
 let package = Package(
@@ -411,7 +411,7 @@ These examples demonstrate:
 ## Requirements
 
 - iOS 14.0+ / tvOS 14.0+ / Mac Catalyst 13.0+
-- Swift 6.2+
+- Swift 6.1+
 - Texture (AsyncDisplayKit) via SPM with `IGListKit` trait enabled
 - IGListKit 5.0+
 
