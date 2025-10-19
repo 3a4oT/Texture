@@ -1,12 +1,19 @@
-# SPM With IGListKit Example
+# SPMWithIGListKit Example
 
-This example demonstrates how to use the IGListKit trait with Texture via Swift Package Manager.
+This example demonstrates how to use Texture with IGListKit in a Swift Package Manager library project.
 
-## What This Example Tests
+## What This Example Shows
 
-This example verifies that when you enable the IGListKit trait in your Package.swift, the IGListKit dependency is resolved and available for use alongside Texture's ASCollectionNode.
+- Enabling IGListKit trait in a SPM package
+- Using Pure Swift API for Texture + IGListKit integration
+- Testing that trait activation works correctly
 
-## Package.swift Trait Syntax
+## Key Files
+
+- **Package.swift** - Shows how to enable IGListKit trait
+- **Tests/** - Verifies trait enables IGListKit dependency correctly
+
+## Package.swift Configuration
 
 ```swift
 dependencies: [
@@ -20,70 +27,38 @@ dependencies: [
 ]
 ```
 
-## What Gets Enabled
-
-When the IGListKit trait is enabled:
-
-1. **IGListKit dependency** is resolved and added to your project
-2. **IGListDiffKit** (part of IGListKit) is also available
-3. You can use both **Texture** (ASCollectionNode, ASDisplayNode, etc.) and **IGListKit** (ListAdapter, ListSectionController, etc.) together
+Note: This example uses `path: "../.."` for local testing within the Texture repository. In your projects, use the `url` and `from` shown above.
 
 ## Building
 
 ```bash
+# Build the package
 swift build
-```
 
-Or with xcodebuild:
-
-```bash
-xcodebuild -scheme SPMWithIGListKit -sdk iphonesimulator -destination 'platform=iOS Simulator,OS=26.0,name=iPhone 17' build
+# Or with xcodebuild
+xcodebuild -scheme SPMWithIGListKit -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17' build
 ```
 
 ## Running Tests
 
 ```bash
+# Run tests with Swift
 swift test
+
+# Or with xcodebuild
+xcodebuild -scheme SPMWithIGListKit -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17' test
 ```
 
-Or with xcodebuild:
+## For iOS/tvOS App Projects
 
-```bash
-xcodebuild -scheme SPMWithIGListKit -sdk iphonesimulator -destination 'platform=iOS Simulator,OS=26.0,name=iPhone 17' test
-```
+If you need to integrate Texture with IGListKit in an iOS or tvOS app (not a library), see the **ASIGListKitSPM** example instead. App projects require a different approach using a local package wrapper.
 
-## Tests
+## Complete Documentation
 
-The test suite verifies:
+For detailed documentation on:
+- Pure Swift API usage
+- Section controller implementation
+- iOS/tvOS app integration
+- Migration from CocoaPods
 
-- ✓ IGListKit dependency is resolved and classes are available
-- ✓ Basic IGListKit objects (ListAdapter, ListAdapterUpdater) can be created
-- ✓ ASCollectionNode from Texture is available
-- ✓ Both frameworks can be used together
-
-## Usage in Your App
-
-```swift
-import AsyncDisplayKit
-import IGListKit
-
-// Use Texture's ASCollectionNode
-let layout = UICollectionViewFlowLayout()
-let collectionNode = ASCollectionNode(collectionViewLayout: layout)
-
-// Use IGListKit's ListAdapter
-let updater = ListAdapterUpdater()
-let adapter = ListAdapter(updater: updater, viewController: self)
-
-// Connect them (requires additional integration code from Texture)
-// See Texture source: IGListAdapter+AsyncDisplayKit.h
-```
-
-## Note
-
-The Texture+IGListKit integration APIs (`IGListAdapter.setASDKCollectionNode(_:)`, `ASIGListSectionControllerMethods`, etc.) are Objective-C extensions that may require additional bridging to use from Swift. This example focuses on verifying that the trait enables the IGListKit dependency correctly.
-
-## Learn More
-
-- **IGListKit**: https://github.com/Instagram/IGListKit
-- **Texture Documentation**: http://texturegroup.org
+See: [TextureIGListKitExtensions README](../../Sources/TextureIGListKitExtensions/README.md)
