@@ -8,7 +8,7 @@ jobs:
         DEVELOPER_DIR: /Applications/Xcode_26.0.1.app/Contents/Developer
     strategy:
       matrix:
-        mode: [tests, framework, life-without-cocoapods, carthage, spm, spm-texture-basic, spm-texture-iglistkit, examples-pt1, examples-pt2, examples-pt3, examples-pt4]
+        mode: [tests, framework, life-without-cocoapods, carthage, spm, spm-texture-basic, spm-texture-iglistkit, spm-app-iglistkit, examples-pt1, examples-pt2, examples-pt3, examples-pt4]
         include:
           - mode: tests
             name: Build and run tests
@@ -24,6 +24,8 @@ jobs:
             name: Test SPM with default traits (AsyncDisplayKit)
           - mode: spm-texture-iglistkit
             name: Test SPM with IGListKit trait
+          - mode: spm-app-iglistkit
+            name: Test SPM iOS app with IGListKit (local package wrapper)
           - mode: examples-pt1
             name: Build examples (examples-pt1)
           - mode: examples-pt2

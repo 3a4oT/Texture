@@ -285,15 +285,10 @@ spm|all)
     ;;
 
 spm-texture-basic)
-    echo "Testing SPMBasic example (AsyncDisplayKit without IGListKit)."
+    echo "Testing SPMBasic example (verifying committed SPM layout)."
 
-    # Clean generated SPM directory to test script generation
-    echo "Cleaning generated SPM directory..."
-    rm -rf spm/Sources
-
-    # Generate SPM symlinks from scratch
-    echo "Generating SPM layout..."
-    swift scripts/generate_spm_sources_layout.swift
+    # DO NOT regenerate - test that committed spm/Sources is valid
+    echo "Using committed SPM layout (no regeneration)..."
 
     # Test SPMBasic example (build and test)
     echo "Building and testing SPMBasic example..."
@@ -309,14 +304,13 @@ spm-texture-basic)
     ;;
 
 spm-texture-iglistkit)
-    echo "Testing SPMWithIGListKit example (AsyncDisplayKitIGListKit product)."
+    echo "Testing SPMWithIGListKit example (testing SPM generation script)."
 
-    # Clean generated SPM directory to test script generation
+    # Clean and regenerate to verify generation script works
     echo "Cleaning generated SPM directory..."
     rm -rf spm/Sources
 
-    # Generate SPM symlinks from scratch
-    echo "Generating SPM layout..."
+    echo "Generating SPM layout from scratch..."
     swift scripts/generate_spm_sources_layout.swift
 
     # Test SPMWithIGListKit example (build and test)
@@ -327,6 +321,24 @@ spm-texture-iglistkit)
         -sdk "$SDK" \
         -destination "$PLATFORM" \
         clean build test
+    cd ../..
+
+    success="1"
+    ;;
+
+spm-app-iglistkit)
+    echo "Testing ASIGListKitSPM iOS app example (local package wrapper approach)."
+
+    # DO NOT regenerate - reuse SPM layout from previous tests
+
+    # Test ASIGListKitSPM iOS app example (build only)
+    echo "Building ASIGListKitSPM iOS app example..."
+    cd examples/ASIGListKitSPM
+    set -o pipefail && xcodebuild \
+        -scheme ASIGListKitSPM \
+        -sdk "$SDK" \
+        -destination "$PLATFORM" \
+        clean build
     cd ../..
 
     success="1"
