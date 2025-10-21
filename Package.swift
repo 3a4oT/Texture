@@ -7,15 +7,22 @@ import PackageDescription
 //
 // This package supports both binary (precompiled XCFramework) and source distribution:
 //
-// Binary Distribution (faster builds, all features enabled):
-//   - Product: "AsyncDisplayKit" (default)
-//   - Includes: Video, MapKit, Photos, AssetsLibrary, IGListKit (all traits)
+// Binary Distribution (faster builds):
+//   - Product: "AsyncDisplayKitBinary" (when available)
+//   - Includes: Core AsyncDisplayKit, PINRemoteImage, TextNode2, IGListKit (Objective-C API)
 //   - Best for: Production apps, faster CI builds
+//   - Build time: Instant (pre-compiled)
 //
-// Source Distribution (customizable, slower builds):
-//   - Product: "AsyncDisplayKitSource"
-//   - Supports: Selective trait configuration via SPM traits
+// Source Distribution (customizable):
+//   - Product: "AsyncDisplayKit" (default)
+//   - Includes: Same as binary + optional IGListKit trait (Swift API)
 //   - Best for: Development, debugging, custom configurations
+//   - Build time: 2-5 minutes
+//
+// ⚠️ SPM Limitations (both binary and source):
+// Video (ASVideoNode), MapKit (ASMapNode), and Photos features are NOT available from Swift
+// due to SPM limitations with conditionally compiled Objective-C classes (#if AS_USE_VIDEO).
+// These features remain available via CocoaPods and Carthage, or from Objective-C code (.m files).
 //
 // Note: Binary targets are currently commented out until first release is published.
 // Uncomment and update the URL/checksum after creating a GitHub release.

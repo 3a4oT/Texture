@@ -21,17 +21,25 @@ Texture provides two distribution methods via Swift Package Manager:
 
 ### Binary Distribution (XCFramework)
 - **Pros:** Significantly faster build times (no compilation needed)
-- **Cons:** Fixed feature set, Objective-C IGListKit API only
+- **Cons:** Objective-C IGListKit API only (no Swift API)
 - **Best for:** Production apps, CI builds, Objective-C codebases
 - **Size:** ~15-18 MB
 - **Build time savings:** 2-5 minutes per clean build
 
 ### Source Distribution
-- **Pros:** Customizable via traits, modern Swift IGListKit API
+- **Pros:** Modern Swift IGListKit API available
 - **Cons:** Slower builds (full compilation required)
-- **Best for:** Development, Swift codebases, apps needing ASMapNode
+- **Best for:** Development, Swift codebases needing Swift API
 - **Size:** ~5 MB source
 - **Build time:** 2-5 minutes per clean build
+
+### ⚠️ Important SPM Limitation (Both Binary and Source)
+
+Video (ASVideoNode), MapKit (ASMapNode), and Photos features are **NOT available** via Swift Package Manager due to technical limitations. These Objective-C classes are wrapped in conditional compilation directives (`#if AS_USE_VIDEO`) which prevents them from being exported in the Swift module interface.
+
+**If you need these features:**
+- Use CocoaPods or Carthage (original repository)
+- Or use from Objective-C code (.m files)
 
 ---
 
@@ -43,14 +51,17 @@ Texture provides two distribution methods via Swift Package Manager:
 |---------|-------------------|---------------------|
 | **Build Speed** | Instant (pre-compiled) | 2-5 minutes |
 | **Core Nodes** | All included | All included |
-| **Video (ASVideoNode)** | Included | Included (default trait) |
-| **Photos Framework** | Included | Included (default trait) |
-| **IGListKit Integration** | Objective-C API only | **Swift API (modern)** |
-| **MapKit (ASMapNode)** | **Not included** | Optional trait |
-| **AssetsLibrary** | **Not included** | Optional trait (deprecated) |
-| **Old TextNode** | **Not included** | Available |
-| **TextNode2** | Included (default) | Included (default) |
+| **Video (ASVideoNode)** | ❌ Not available (SPM limitation) | ❌ Not available (SPM limitation) |
+| **Photos Framework** | ❌ Not available (SPM limitation) | ❌ Not available (SPM limitation) |
+| **MapKit (ASMapNode)** | ❌ Not available (SPM limitation) | ❌ Not available (SPM limitation) |
+| **IGListKit Integration** | ✅ Objective-C API only | ✅ **Swift API (modern)** |
+| **AssetsLibrary** | ❌ Deprecated iOS 9.0 | ❌ Deprecated iOS 9.0 |
+| **Old TextNode** | ❌ Not included | ❌ Not included |
+| **TextNode2** | ✅ Included (default) | ✅ Included (default) |
+| **PINRemoteImage** | ✅ Included | ✅ Included |
 | **Language** | Objective-C/C++ | Objective-C/C++ + Swift |
+
+**Note:** To use Video/MapKit/Photos features, use CocoaPods or Carthage from the original repository.
 
 ---
 
@@ -58,7 +69,7 @@ Texture provides two distribution methods via Swift Package Manager:
 
 ### What's Included in Binary Distribution
 
-The binary is optimized for iOS 14+ with the most commonly used features:
+The binary is optimized for iOS 14+ with core Texture functionality:
 
 #### Included (Ready to Use)
 
@@ -67,44 +78,51 @@ The binary is optimized for iOS 14+ with the most commonly used features:
 - ASImageNode, ASNetworkImageNode, ASMultiplexImageNode
 - ASTextNode2 (modern, performant text rendering)
 - ASButtonNode, ASControlNode
-- ASVideoNode, ASVideoPlayerNode (video support)
 - ASCollectionNode, ASTableNode, ASPagerNode
 - All layout specs (ASStackLayoutSpec, ASInsetLayoutSpec, etc.)
 
 **Framework Integration:**
-- Photos framework support (PHAsset, PHImageManager)
 - PINRemoteImage integration (image downloading/caching)
-- **IGListKit integration (Objective-C API only)**
+- IGListKit integration (Objective-C API only)
 
 **Why These Are Included:**
-- Used by 90%+ of Texture apps
-- Core functionality most apps need
-- Video and photos are very common
+- Core functionality that works via SPM
+- Used by most Texture apps
+- Available from Swift code
 
-#### Not Included (Use Source Distribution)
+#### Not Available (SPM Limitations - Both Binary and Source)
+
+**ASVideoNode, ASVideoPlayerNode (Video Support):**
+- ❌ Not accessible from Swift via SPM
+- Wrapped in `#if AS_USE_VIDEO` preprocessor directive
+- Classes not exported in Swift module interface
+- **Migration path:** Use CocoaPods/Carthage, or Objective-C .m files
 
 **ASMapNode (MapKit Integration):**
-- Only ~10% of apps display maps
-- Adds 100-200KB to binary
-- Requires linking MapKit.framework + CoreLocation.framework
-- **Migration path:** Use source distribution with MapKit trait
+- ❌ Not accessible from Swift via SPM
+- Wrapped in `#if AS_USE_MAPKIT` preprocessor directive
+- Classes not exported in Swift module interface
+- **Migration path:** Use CocoaPods/Carthage, or Objective-C .m files
+
+**Photos Framework Integration:**
+- ❌ Partially accessible from Swift via SPM
+- Some helpers wrapped in `#if AS_USE_PHOTOS`
+- **Migration path:** Use CocoaPods/Carthage, or Objective-C .m files
 
 **AssetsLibrary:**
-- Deprecated in iOS 9.0 (2015)
-- Fully replaced by Photos framework (iOS 8+)
-- Binary targets iOS 14+ (2020)
-- **Migration path:** Use Photos framework APIs instead
+- ❌ Deprecated in iOS 9.0 (2015)
+- ❌ Not available via SPM
+- **Migration path:** Use Photos framework via CocoaPods/Carthage
 
 **Old TextNode:**
-- Legacy text rendering engine
-- Slower than TextNode2
-- Less features than TextNode2
-- **Migration path:** Use TextNode2 (default in binary)
+- ❌ Legacy text rendering engine
+- Removed in favor of TextNode2
+- **Migration path:** Use TextNode2 (default)
 
 **TextureIGListKitExtensions (Swift API):**
+- ✅ Available in source distribution only
 - Modern Swift API for IGListKit
-- Source distribution only
-- **Migration path:** See IGListKit Integration Differences section
+- **Migration path:** Use source distribution with IGListKit trait
 
 ---
 
@@ -271,13 +289,19 @@ adapter.setCollectionNode(node)
 - You have an Objective-C codebase
 - You're migrating from CocoaPods/Carthage
 - You want fastest builds
-- You don't need ASMapNode
+- You don't need Video/MapKit/Photos features
 
 **Use Source Distribution (Swift API) if:**
 - You have a Swift codebase
-- You want modern Swift APIs
-- You need ASMapNode
+- You want modern Swift APIs for IGListKit
 - You prefer idiomatic Swift naming
+- Build time is acceptable (2-5 minutes)
+
+**Use CocoaPods or Carthage (original repository) if:**
+- You need Video (ASVideoNode) features
+- You need MapKit (ASMapNode) features
+- You need Photos framework integration
+- You're okay with longer build times
 
 ---
 
@@ -296,10 +320,7 @@ targets: [
             .product(name: "AsyncDisplayKitBinary", package: "Texture")
         ],
         linkerSettings: [
-            .linkedLibrary("c++"),
-            .linkedFramework("AVFoundation"),
-            .linkedFramework("CoreMedia"),
-            .linkedFramework("Photos")
+            .linkedLibrary("c++")
         ]
     )
 ]
@@ -352,22 +373,22 @@ adapter.setCollectionNode(node)
 ```swift
 linkerSettings: [
     // ALWAYS REQUIRED
-    .linkedLibrary("c++"),
-
-    // REQUIRED for binary
-    .linkedFramework("AVFoundation"),
-    .linkedFramework("CoreMedia"),
-    .linkedFramework("Photos")
+    .linkedLibrary("c++")
 ]
 ```
 
-### NOT Required for Binary
+### NOT Required for Binary (SPM Limitations)
 
 ```swift
-// DON'T ADD for binary:
-// .linkedFramework("MapKit")         // ASMapNode not in binary
-// .linkedFramework("CoreLocation")   // ASMapNode not in binary
-// .linkedFramework("AssetsLibrary")  // Deprecated, not in binary
+// DON'T ADD for binary or source - these features are not available via SPM:
+// .linkedFramework("AVFoundation")   // Video not accessible from Swift
+// .linkedFramework("CoreMedia")      // Video not accessible from Swift
+// .linkedFramework("Photos")         // Photos not accessible from Swift
+// .linkedFramework("MapKit")         // ASMapNode not accessible from Swift
+// .linkedFramework("CoreLocation")   // ASMapNode not accessible from Swift
+// .linkedFramework("AssetsLibrary")  // Deprecated iOS 9.0
+
+// To use these features, use CocoaPods or Carthage (original repository)
 ```
 
 ---
@@ -383,12 +404,16 @@ linkerSettings: [
 **Build configuration:**
 - `AS_ENABLE_TEXTNODE=0` (use TextNode2)
 - `AS_USE_ASSETS_LIBRARY=0` (deprecated)
-- `AS_USE_MAPKIT=0` (niche use case)
-- `AS_USE_PHOTOS=1` (common)
-- `AS_USE_VIDEO=1` (common)
+- `AS_USE_MAPKIT=0` (not accessible from Swift via SPM)
+- `AS_USE_PHOTOS=0` (not accessible from Swift via SPM)
+- `AS_USE_VIDEO=0` (not accessible from Swift via SPM)
 - `AS_IG_LIST_KIT=1` (Objective-C implementation only)
+- `AS_PIN_REMOTE_IMAGE=1` (works via SPM)
 
-**Note:** Swift module `TextureIGListKitExtensions` is NOT included in binary.
+**Note:**
+- Swift module `TextureIGListKitExtensions` is NOT included in binary
+- Video/MapKit/Photos classes wrapped in `#if` are not exported in Swift module interface
+- These features remain available via CocoaPods/Carthage or from Objective-C .m files
 
 ---
 
@@ -408,18 +433,21 @@ No. The Swift API (`TextureIGListKitExtensions`) requires source compilation. Us
 
 Yes! Binary uses the same Objective-C API as CocoaPods/Carthage (`setASDKCollectionNode:`). It's a drop-in replacement.
 
-### Why is ASMapNode not in the binary?
+### Why are Video/MapKit/Photos not available via SPM?
 
-Only ~10% of apps use maps. Removing it:
-- Reduces binary by 100-200KB
-- Removes MapKit.framework dependency
-- Serves 90% of use cases
+These Objective-C classes are wrapped in conditional compilation directives (`#if AS_USE_VIDEO`, `#if AS_USE_MAPKIT`, `#if AS_USE_PHOTOS`). Swift Package Manager generates module interfaces at compile time, and classes excluded by `#if` guards are not exported to the Swift module interface.
 
-Apps needing ASMapNode can use source distribution.
+**This affects both binary and source SPM distributions.**
+
+**To use these features:**
+- Use CocoaPods or Carthage (original repository)
+- Or use from Objective-C code (.m files) where the classes are still available
 
 ### What about AssetsLibrary?
 
-Deprecated in iOS 9.0 (2015). Binary targets iOS 14+ (2020). Use Photos framework instead.
+Deprecated in iOS 9.0 (2015). Not available via SPM. Use Photos framework via CocoaPods/Carthage instead.
+
+Note: Photos framework also has SPM limitations (see above).
 
 ### Does Library Evolution work?
 
