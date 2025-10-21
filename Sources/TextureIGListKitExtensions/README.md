@@ -36,7 +36,7 @@ If you're currently using Texture with IGListKit via CocoaPods or Carthage, plea
 
 When you `import TextureIGListKitExtensions`, you get:
 
-1. **One extension method:**
+1. **ListAdapter extension method:**
    ```swift
    extension ListAdapter {
        @MainActor
@@ -44,7 +44,23 @@ When you `import TextureIGListKitExtensions`, you get:
    }
    ```
 
-2. **Re-exported modules** (via `public import`):
+2. **Supplementary view helper methods:**
+   ```swift
+   enum SupplementaryViewSourceMethods {
+       static func viewForSupplementaryElement(
+           ofKind elementKind: String,
+           at index: Int,
+           sectionController: ListSectionController
+       ) -> UICollectionReusableView
+
+       static func sizeForSupplementaryView(
+           ofKind elementKind: String,
+           at index: Int
+       ) -> CGSize
+   }
+   ```
+
+3. **Re-exported modules** (via `public import`):
    - `AsyncDisplayKit` - All AsyncDisplayKit APIs (ASCollectionNode, ASCellNode, etc.)
    - `IGListKit` - All IGListKit APIs (ListAdapter, ListSectionController, etc.)
    - `IGListDiffKit` - Available through `IGListKit` transitive dependency (ListDiff, ListDiffable, etc.)
@@ -57,6 +73,17 @@ import TextureIGListKitExtensions
 let adapter = ListAdapter(...)
 let node = ASCollectionNode(...)
 adapter.setCollectionNode(node)
+
+// Supplementary view methods also available
+class MySectionController: ListSectionController, ListSupplementaryViewSource {
+    func viewForSupplementaryElement(ofKind elementKind: String, at index: Int) -> UICollectionReusableView {
+        return SupplementaryViewSourceMethods.viewForSupplementaryElement(
+            ofKind: elementKind,
+            at: index,
+            sectionController: self
+        )
+    }
+}
 
 // IGListDiffKit also available
 let result = ListDiff(oldArray: old, newArray: new, option: .equality)
@@ -343,9 +370,147 @@ class MyCellNode: ASCellNode {
 }
 ```
 
+### Supplementary Views (Headers/Footers)
+
+Section controllers can provide supplementary views (headers, footers) by conforming to both `ListSupplementaryViewSource` (IGListKit) and implementing AsyncDisplayKit node methods.
+
+**Step 1:** Make your section controller conform to `ListSupplementaryViewSource`:
+
+```swift
+import TextureIGListKitExtensions
+
+class MySectionController: ListSectionController, ListSupplementaryViewSource {
+
+    // MARK: - ListSupplementaryViewSource (IGListKit protocol)
+
+    func supportedElementKinds() -> [String] {
+        return [UICollectionView.elementKindSectionHeader]
+    }
+
+    func viewForSupplementaryElement(
+        ofKind elementKind: String,
+        at index: Int
+    ) -> UICollectionReusableView {
+        // Use helper method - this dequeues the view and wraps your ASCellNode
+        return SupplementaryViewSourceMethods.viewForSupplementaryElement(
+            ofKind: elementKind,
+            at: index,
+            sectionController: self
+        )
+    }
+
+    func sizeForSupplementaryView(
+        ofKind elementKind: String,
+        at index: Int
+    ) -> CGSize {
+        // Use helper method - returns .zero (AsyncDisplayKit handles sizing)
+        return SupplementaryViewSourceMethods.sizeForSupplementaryView(
+            ofKind: elementKind,
+            at: index
+        )
+    }
+
+    override func didUpdate(to object: Any) {
+        // Set yourself as supplementary view source
+        self.supplementaryViewSource = self
+    }
+}
+```
+
+**Step 2:** Implement AsyncDisplayKit node methods using Objective-C runtime:
+
+```swift
+// Add AsyncDisplayKit supplementary view support
+extension MySectionController {
+
+    // Provide node block for supplementary view
+    @objc func nodeBlockForSupplementaryElement(
+        ofKind elementKind: String,
+        at index: Int
+    ) -> ASCellNodeBlock {
+        return {
+            return HeaderNode()  // Your custom ASCellNode
+        }
+    }
+
+    // Provide size constraints for supplementary view
+    @objc func sizeRangeForSupplementaryElement(
+        ofKind elementKind: String,
+        at index: Int
+    ) -> ASSizeRange {
+        let width = self.collectionContext!.containerSize.width
+        return ASSizeRangeMake(
+            CGSize(width: width, height: 44),
+            CGSize(width: width, height: 44)
+        )
+    }
+}
+```
+
+**Step 3:** Create your supplementary node:
+
+```swift
+import AsyncDisplayKit
+
+class HeaderNode: ASCellNode {
+    let titleNode = ASTextNode()
+
+    override init() {
+        super.init()
+        automaticallyManagesSubnodes = true
+
+        titleNode.attributedText = NSAttributedString(
+            string: "Section Header",
+            attributes: [
+                .font: UIFont.boldSystemFont(ofSize: 18),
+                .foregroundColor: UIColor.label
+            ]
+        )
+    }
+
+    override func layoutSpecThatFits(_ constrainedSize: ASSizeRange) -> ASLayoutSpec {
+        return ASInsetLayoutSpec(
+            insets: UIEdgeInsets(top: 12, left: 16, bottom: 12, right: 16),
+            child: titleNode
+        )
+    }
+}
+```
+
+#### Migration from Objective-C
+
+If you're migrating from Objective-C code that used `ASIGListSupplementaryViewSourceMethods`:
+
+**Before (Objective-C, CocoaPods/Carthage):**
+```objc
+#import <AsyncDisplayKit/AsyncDisplayKit+IGListKitMethods.h>
+
+- (UICollectionReusableView *)viewForSupplementaryElementOfKind:(NSString *)elementKind atIndex:(NSInteger)index {
+    return [ASIGListSupplementaryViewSourceMethods
+            viewForSupplementaryElementOfKind:elementKind
+            atIndex:index
+            sectionController:self];
+}
+```
+
+**After (Swift, SPM):**
+```swift
+import TextureIGListKitExtensions
+
+func viewForSupplementaryElement(ofKind elementKind: String, at index: Int) -> UICollectionReusableView {
+    return SupplementaryViewSourceMethods.viewForSupplementaryElement(
+        ofKind: elementKind,
+        at: index,
+        sectionController: self
+    )
+}
+```
+
+The functionality is identical - the Swift version replaces the unavailable Objective-C class.
+
 ## How It Works Internally
 
-The module consists of two components:
+The module consists of three components:
 
 ### 1. `IGListAdapterDataSourceBridge` (internal)
 A bridge class that:
@@ -364,6 +529,21 @@ The public API that:
 - Sets `collectionNode.dataSource` and `collectionNode.delegate` to the bridge
 - Sets `adapter.collectionView` when the node loads (handles both loaded and unloaded states)
 - Can only be called **once** per adapter (enforced with `assertionFailure`)
+
+### 3. `SupplementaryViewSourceMethods` (public)
+Helper methods for supplementary views (headers/footers):
+
+**`viewForSupplementaryElement(ofKind:at:sectionController:)`**
+- Dequeues `_ASCollectionReusableView` (AsyncDisplayKit's internal wrapper class) via IGListKit's collection context
+- Returns a `UICollectionReusableView` that wraps an `ASCellNode`
+- Equivalent to `ASIGListSupplementaryViewSourceMethods.viewForSupplementaryElementOfKind:atIndex:sectionController:` from Objective-C
+
+**`sizeForSupplementaryView(ofKind:at:)`**
+- Always returns `CGSize.zero` (AsyncDisplayKit handles sizing via `ASSizeRange`)
+- Equivalent to `ASIGListSupplementaryViewSourceMethods.sizeForSupplementaryViewOfKind:atIndex:` from Objective-C
+- The Objective-C version triggers an assertion if called; we document it should not be called
+
+These methods provide Swift access to functionality that is unavailable from Objective-C classes wrapped in `#if AS_IG_LIST_KIT` directives when using SPM
 
 This replicates the behavior of `-[IGListAdapter setASDKCollectionNode:]` from the Objective-C implementation.
 
