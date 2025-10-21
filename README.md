@@ -45,7 +45,7 @@ Fast builds with pre-compiled XCFramework. Best for production apps and CI.
 ```swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/3a4oT/Texture", from: "3.2.2")
+    .package(url: "https://github.com/3a4oT/Texture", from: "3.2.3")
 ],
 targets: [
     .target(
@@ -86,7 +86,7 @@ Same core features as binary, plus optional modern Swift API for IGListKit integ
 ```swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/3a4oT/Texture", from: "3.2.2")
+    .package(url: "https://github.com/3a4oT/Texture", from: "3.2.3")
 ],
 targets: [
     .target(
@@ -248,13 +248,13 @@ These are niche features (~10-30% of apps) that require heavy frameworks (AVFoun
 
 **Binary (Fast):**
 ```swift
-.package(url: "https://github.com/3a4oT/Texture", from: "3.2.2"),
+.package(url: "https://github.com/3a4oT/Texture", from: "3.2.3"),
 .product(name: "AsyncDisplayKitBinary", package: "Texture")
 ```
 
 **Source (Same Features, Swift API):**
 ```swift
-.package(url: "https://github.com/3a4oT/Texture", from: "3.2.2"),
+.package(url: "https://github.com/3a4oT/Texture", from: "3.2.3"),
 .product(name: "AsyncDisplayKit", package: "Texture")
 ```
 
@@ -262,7 +262,7 @@ These are niche features (~10-30% of apps) that require heavy frameworks (AVFoun
 ```swift
 .package(
     url: "https://github.com/3a4oT/Texture",
-    from: "3.2.2",
+    from: "3.2.3",
     traits: [.init(name: "IGListKit")]
 ),
 .product(name: "AsyncDisplayKit", package: "Texture"),
@@ -341,7 +341,7 @@ We periodically sync with upstream to get core improvements.
 
 This fork uses automated releases via GitHub Actions:
 
-1. Push a tag: `git tag 3.2.2 && git push origin 3.2.2`
+1. Push a tag: `git tag 3.2.3 && git push origin 3.2.3`
 2. GitHub Actions builds XCFramework
 3. Creates release with binary artifact
 4. Generates checksum for SPM

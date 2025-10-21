@@ -329,7 +329,7 @@ adapter.setCollectionNode(node)
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/TextureGroup/Texture", from: "3.2.2")
+    .package(url: "https://github.com/TextureGroup/Texture", from: "3.2.3")
 ],
 targets: [
     .target(
@@ -360,7 +360,7 @@ adapter.setASDKCollectionNode(node)
 dependencies: [
     .package(
         url: "https://github.com/TextureGroup/Texture",
-        from: "3.2.2",
+        from: "3.2.3",
         traits: [.init(name: "IGListKit")]  // Enable IGListKit trait
     )
 ],
@@ -512,7 +512,7 @@ We're considering additional binary distributions based on community demand:
 **Usage (proposed):**
 ```swift
 dependencies: [
-    .package(url: "https://github.com/3a4oT/Texture", from: "3.2.2")
+    .package(url: "https://github.com/3a4oT/Texture", from: "3.2.3")
 ],
 targets: [
     .target(

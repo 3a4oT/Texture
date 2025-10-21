@@ -42,7 +42,7 @@ Shows how to enable IGListKit trait for use in an app:
 dependencies: [
     .package(
         url: "https://github.com/3a4oT/Texture.git",
-        from: "3.2.2",
+        from: "3.2.3",
         traits: [
             .init(name: "IGListKit")  // Enable trait here
         ]

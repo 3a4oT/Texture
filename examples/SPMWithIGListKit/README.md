@@ -19,7 +19,7 @@ This example demonstrates how to use Texture with IGListKit in a Swift Package M
 dependencies: [
     .package(
         url: "https://github.com/3a4oT/Texture.git",
-        from: "3.2.2",
+        from: "3.2.3",
         traits: [
             .init(name: "IGListKit")  // Enable IGListKit trait
         ]
