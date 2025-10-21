@@ -41,14 +41,23 @@ targets: [
 ```
 
 **Default Features (included automatically):**
-- Core AsyncDisplayKit (ASDisplayNode, ASImageNode, ASTextNode, etc.)
+- Core AsyncDisplayKit (ASDisplayNode, ASImageNode, ASTextNode2, ASButtonNode, etc.)
 - PINRemoteImage integration (ASPINRemoteImageDownloader)
-- Video support (AVFoundation, CoreMedia)
-- MapKit integration
-- Photos framework
-- AssetsLibrary (iOS only)
+- Collection views (ASCollectionNode, ASTableNode)
+- Layout specs (ASStackLayoutSpec, ASInsetLayoutSpec, etc.)
+- TextNode2 (modern text rendering, replaces legacy TextNode)
 
-**No trait configuration needed** - all these features work out of the box!
+**Optional Features (enable via traits):**
+- IGListKit integration (advanced collection views with modern Swift API)
+
+**⚠️ SPM Limitations:**
+Video (ASVideoNode), MapKit (ASMapNode), and Photos features are **not available** via Swift Package Manager due to technical limitations. These Objective-C classes are wrapped in conditional compilation directives (`#if AS_USE_VIDEO`) which prevents them from being exported in the Swift module interface.
+
+**If you need Video/MapKit/Photos features:**
+- Use **CocoaPods** or **Carthage** (full feature support)
+- Or use these features from **Objective-C code** (.m files)
+
+**Future directions:** We're exploring solutions like Swift wrapper modules (TextureVideoExtensions, TextureMapKitExtensions) to provide Swift API for these features via SPM.
 
 #### Advanced Usage: IGListKit Integration
 
@@ -95,16 +104,18 @@ If you're migrating from CocoaPods, here's how the subspecs map to SPM features:
 |---------|-----------|-----|-------|
 | **Core** | `pod 'Texture'` (default) | `.product(name: "AsyncDisplayKit", ...)` | ✅ Always included |
 | **PINRemoteImage** | Included by default | Always included | ✅ Same behavior |
-| **Video** | Included by default | Default trait (enabled) | ✅ Same behavior |
-| **MapKit** | Included by default | Default trait (enabled) | ✅ Same behavior |
-| **Photos** | Included by default | Default trait (enabled) | ✅ Same behavior |
-| **AssetsLibrary** | Included by default | Default trait (enabled) | ✅ Same behavior |
-| **IGListKit** | `pod 'Texture/IGListKit'` | Trait + product (see above) | ⚠️ Uses IGListKit 5.0+ |
+| **Video** | Included by default | **Not available** | ❌ SPM limitation (see above) |
+| **MapKit** | Included by default | **Not available** | ❌ SPM limitation (see above) |
+| **Photos** | Included by default | **Not available** | ❌ SPM limitation (see above) |
+| **AssetsLibrary** | Included by default | **Removed** | ❌ Deprecated iOS 9.0, use Photos |
+| **IGListKit** | `pod 'Texture/IGListKit'` | Optional trait + product | ⚠️ Uses IGListKit 5.0+ |
 | **TextNode2** | `pod 'Texture/TextNode2'` | Enabled by default | ✅ Modern TextNode used |
 | **Yoga** | `pod 'Texture/Yoga'` | Not supported | Add as separate dependency |
 
 **Key differences:**
 - **TextNode2 is default**: SPM uses the modern TextNode implementation automatically (no legacy TextNode)
+- ❌ **Video/MapKit/Photos not available**: Due to Swift Package Manager limitations with conditionally compiled Objective-C classes
+- ❌ **AssetsLibrary removed**: Deprecated in iOS 9.0, use Photos framework instead
 - ⚠️ **IGListKit version**: SPM uses IGListKit 5.0+ instead of 4.x (breaking changes)
 - ℹ️ **Yoga**: Not integrated in SPM - add Yoga as a separate dependency if needed
 

@@ -1,37 +1,25 @@
 # SPM Basic Example
 
-This example demonstrates basic Texture usage via Swift Package Manager with default traits.
+This example demonstrates basic Texture usage via Swift Package Manager.
 
-## Features
+## What This Tests
 
-This example uses Texture with default traits enabled:
-- Video support (AVFoundation, CoreMedia)
-- MapKit integration
-- Photos framework
-- AssetsLibrary (iOS only)
+This example verifies that core Texture functionality works via SPM:
+- Basic nodes (ASDisplayNode, ASImageNode, ASTextNode, ASButtonNode)
+- Collection views (ASCollectionNode, ASTableNode)
+- Layout specs (ASStackLayoutSpec, ASInsetLayoutSpec, ASCenterLayoutSpec, ASBackgroundLayoutSpec)
+- PINRemoteImage integration (ASPINRemoteImageDownloader, ASNetworkImageNode)
 
-## Building
+## SPM Limitations
 
-From this directory:
+**Note:** Video (ASVideoNode), MapKit (ASMapNode), and Photos features are **not available** via SPM due to Swift Package Manager limitations with conditionally compiled Objective-C classes. These features remain available via CocoaPods and Carthage.
 
-```bash
-swift build
-```
+## Running Tests
 
-## Running
+From the repository root:
 
 ```bash
-swift run
+./build.sh spm-texture-basic
 ```
 
-Expected output:
-```
-✓ Texture (AsyncDisplayKit) imported successfully via SPM!
-Creating basic nodes...
-✓ ASDisplayNode created
-✓ ASImageNode created
-✓ ASTextNode created
-
-✅ All basic Texture features are working with SPM!
-Default traits enabled: Video, MapKit, Photos, AssetsLibrary
-```
+This will build and run all tests to verify core Texture functionality works correctly with SPM.
