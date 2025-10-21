@@ -60,11 +60,11 @@ let package = Package(
             targets: ["AsyncDisplayKit"]
         ),
 
-        // Binary distribution - uncomment after first release
-        // .library(
-        //     name: "AsyncDisplayKitBinary",
-        //     targets: ["AsyncDisplayKitBinaryWrapper"]
-        // ),
+        // Binary distribution - faster builds with pre-compiled XCFramework
+        .library(
+            name: "AsyncDisplayKitBinary",
+            targets: ["AsyncDisplayKitBinaryWrapper"]
+        ),
 
         .library(
             name: "TextureIGListKitExtensions",
@@ -164,43 +164,37 @@ let package = Package(
             ]
         ),
 
-        // MARK: - Binary Distribution Targets (Commented until first release)
+        // MARK: - Binary Distribution Targets
         //
-        // Instructions to enable binary distribution:
-        // 1. Run: ./scripts/build_xcframework.sh
-        // 2. Create GitHub release and upload Texture.xcframework.zip
-        // 3. Uncomment the targets below
-        // 4. Update URL to: https://github.com/TextureGroup/Texture/releases/download/<version>/Texture.xcframework.zip
-        // 5. Update checksum with value from build script output
+        // Binary distribution provides pre-compiled XCFramework for faster build times.
+        // Includes: Core AsyncDisplayKit, Photos framework, PINRemoteImage, IGListKit (Objective-C API)
+        // See docs/BinaryDistribution.md for details
 
-        // Binary target - precompiled XCFramework with all features enabled
-        // .binaryTarget(
-        //     name: "AsyncDisplayKitBinary",
-        //     url: "https://github.com/TextureGroup/Texture/releases/download/<VERSION>/Texture.xcframework.zip",
-        //     checksum: "<CHECKSUM_FROM_BUILD_SCRIPT>"
-        // ),
+        // Binary target - precompiled XCFramework
+        .binaryTarget(
+            name: "AsyncDisplayKitBinary",
+            url: "https://github.com/3a4oT/Texture/releases/download/3.2.1/Texture.xcframework.zip",
+            checksum: "d20327f6c55f8cf43b5e9076dbca8ca9c130ec7a3a8d0f4034d90a53f9eb1765"
+        ),
 
         // Wrapper target - links binary with SPM dependencies
         // This ensures dependencies (PINRemoteImage, IGListKit) are properly resolved
-        // .target(
-        //     name: "AsyncDisplayKitBinaryWrapper",
-        //     dependencies: [
-        //         "AsyncDisplayKitBinary",
-        //         "PINRemoteImage",
-        //         .product(name: "IGListKit", package: "IGListKit"),
-        //         .product(name: "IGListDiffKit", package: "IGListKit")
-        //     ],
-        //     path: "spm/BinaryWrapper",
-        //     linkerSettings: [
-        //         .linkedFramework("AVFoundation"),
-        //         .linkedFramework("CoreMedia"),
-        //         .linkedFramework("CoreLocation"),
-        //         .linkedFramework("MapKit"),
-        //         .linkedFramework("Photos"),
-        //         .linkedFramework("AssetsLibrary", .when(platforms: [.iOS])),
-        //         .linkedLibrary("c++")
-        //     ]
-        // )
+        .target(
+            name: "AsyncDisplayKitBinaryWrapper",
+            dependencies: [
+                "AsyncDisplayKitBinary",
+                "PINRemoteImage",
+                .product(name: "IGListKit", package: "IGListKit"),
+                .product(name: "IGListDiffKit", package: "IGListKit")
+            ],
+            path: "spm/BinaryWrapper",
+            linkerSettings: [
+                .linkedFramework("Photos"),  // Required for ASMultiplexImageNode PHAsset support
+                .linkedLibrary("c++")
+                // Note: Video/MapKit features not included in binary
+                // Use CocoaPods/Carthage if you need ASVideoNode or ASMapNode
+            ]
+        )
     ],
     cLanguageStandard: .c11,
     cxxLanguageStandard: .cxx20

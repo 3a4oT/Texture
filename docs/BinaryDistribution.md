@@ -512,7 +512,7 @@ We're considering additional binary distributions based on community demand:
 **Usage (proposed):**
 ```swift
 dependencies: [
-    .package(url: "https://github.com/3a4oT/Texture", from: "3.3.0")
+    .package(url: "https://github.com/3a4oT/Texture", from: "3.2.1")
 ],
 targets: [
     .target(
