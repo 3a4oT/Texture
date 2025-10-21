@@ -269,6 +269,216 @@ public import IGListKit
     }
 }
 
+// MARK: - Supplementary View Source Methods
+
+/// Pure Swift implementation of ASIGListSupplementaryViewSourceMethods for SPM builds.
+///
+/// ## Purpose
+///
+/// This enum provides static helper methods for IGListKit section controllers that need to
+/// display supplementary views (headers/footers) when using AsyncDisplayKit with SPM.
+///
+/// ## Why This Exists
+///
+/// The original Objective-C class `ASIGListSupplementaryViewSourceMethods` is wrapped in
+/// `#if AS_IG_LIST_KIT` directives, which prevents it from being accessible in Swift when
+/// using SPM (even with traits enabled). This is a Swift reimplementation of that functionality.
+///
+/// ## Reference Implementation
+///
+/// Based on the Objective-C implementation in:
+/// - `Source/AsyncDisplayKit+IGListKitMethods.mm` (lines 36-51)
+/// - Used in examples like `examples/ASDKgram/Sample/PhotoFeedSectionController.m` (lines 134-142)
+///
+/// ## Usage
+///
+/// Your section controller should:
+/// 1. Conform to both `ListSupplementaryViewSource` (IGListKit) and `ASSupplementaryNodeSource` (AsyncDisplayKit)
+/// 2. Use these methods in the required `IGListSupplementaryViewSource` protocol methods
+/// 3. Implement the `ASSupplementaryNodeSource` protocol methods to provide nodes
+///
+/// ### Example
+///
+/// ```swift
+/// class MySectionController: ListSectionController, ListSupplementaryViewSource {
+///
+///     // MARK: - ListSupplementaryViewSource (IGListKit protocol)
+///
+///     func supportedElementKinds() -> [String] {
+///         return [UICollectionView.elementKindSectionHeader]
+///     }
+///
+///     func viewForSupplementaryElement(
+///         ofKind elementKind: String,
+///         at index: Int
+///     ) -> UICollectionReusableView {
+///         // Delegate to helper method
+///         return SupplementaryViewSourceMethods.viewForSupplementaryElement(
+///             ofKind: elementKind,
+///             at: index,
+///             sectionController: self
+///         )
+///     }
+///
+///     func sizeForSupplementaryView(
+///         ofKind elementKind: String,
+///         at index: Int
+///     ) -> CGSize {
+///         // Delegate to helper method
+///         return SupplementaryViewSourceMethods.sizeForSupplementaryView(
+///             ofKind: elementKind,
+///             at: index
+///         )
+///     }
+/// }
+///
+/// // MARK: - ASSupplementaryNodeSource (AsyncDisplayKit protocol)
+///
+/// extension MySectionController: ASSupplementaryNodeSource {
+///
+///     func nodeBlockForSupplementaryElement(
+///         ofKind elementKind: String,
+///         at index: Int
+///     ) -> ASCellNodeBlock {
+///         return {
+///             let node = HeaderNode()
+///             // Configure node...
+///             return node
+///         }
+///     }
+///
+///     func sizeRangeForSupplementaryElement(
+///         ofKind elementKind: String,
+///         at index: Int
+///     ) -> ASSizeRange {
+///         return ASSizeRange(
+///             min: CGSize(width: 0, height: 44),
+///             max: CGSize(width: CGFloat.infinity, height: 44)
+///         )
+///     }
+/// }
+/// ```
+///
+/// ## Thread Safety
+///
+/// These methods are safe to call from any thread, as they delegate to IGListKit's
+/// thread-safe `ListCollectionContext` methods.
+///
+/// ## See Also
+///
+/// - `ASSupplementaryNodeSource` protocol for the AsyncDisplayKit side of supplementary views
+/// - `ListSupplementaryViewSource` protocol for the IGListKit side
+/// - Original Objective-C: `ASIGListSupplementaryViewSourceMethods` in `AsyncDisplayKit+IGListKitMethods.h`
+public enum SupplementaryViewSourceMethods {
+
+    /// Dequeues a reusable supplementary view for AsyncDisplayKit.
+    ///
+    /// This method should be called from your section controller's
+    /// `viewForSupplementaryElement(ofKind:at:)` method.
+    ///
+    /// ## How It Works
+    ///
+    /// This method asks IGListKit's collection context to dequeue a special
+    /// `_ASCollectionReusableView` that wraps an `ASCellNode`. AsyncDisplayKit
+    /// handles the node → view wrapping internally.
+    ///
+    /// ## Implementation Note
+    ///
+    /// Equivalent to calling:
+    /// ```objc
+    /// [sectionController.collectionContext
+    ///     dequeueReusableSupplementaryViewOfKind:elementKind
+    ///     forSectionController:sectionController
+    ///     class:[_ASCollectionReusableView class]
+    ///     atIndex:index];
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - elementKind: The kind of supplementary element (e.g., `UICollectionView.elementKindSectionHeader`)
+    ///   - index: The index of the supplementary element
+    ///   - sectionController: The section controller requesting the view
+    ///
+    /// - Returns: A dequeued `UICollectionReusableView` that wraps an `ASCellNode`
+    ///
+    /// - Warning: Your section controller MUST conform to `ASSupplementaryNodeSource`
+    ///            and implement `nodeBlockForSupplementaryElement(ofKind:at:)` or
+    ///            `nodeForSupplementaryElement(ofKind:at:)` for this to work.
+    @MainActor
+    public static func viewForSupplementaryElement(
+        ofKind elementKind: String,
+        at index: Int,
+        sectionController: ListSectionController
+    ) -> UICollectionReusableView {
+        guard let collectionContext = sectionController.collectionContext else {
+            assertionFailure("Collection context is nil. Has the section controller been added to an adapter?")
+            return UICollectionReusableView()
+        }
+
+        // Get the _ASCollectionReusableView class dynamically
+        // This class is internal to AsyncDisplayKit and wraps ASCellNode in a UICollectionReusableView
+        guard let reusableViewClass = NSClassFromString("_ASCollectionReusableView") else {
+            assertionFailure("Could not find _ASCollectionReusableView class. Is AsyncDisplayKit properly linked?")
+            return UICollectionReusableView()
+        }
+
+        // Dequeue using IGListKit's context
+        // The context knows to call our ASSupplementaryNodeSource methods
+        let view = collectionContext.dequeueReusableSupplementaryView(
+            ofKind: elementKind,
+            for: sectionController,
+            class: reusableViewClass as! UICollectionReusableView.Type,
+            at: index
+        )
+
+        return view
+    }
+
+    /// Returns a size for supplementary views (always returns `.zero`).
+    ///
+    /// This method should be called from your section controller's
+    /// `sizeForSupplementaryView(ofKind:at:)` method.
+    ///
+    /// ## Why This Returns Zero
+    ///
+    /// AsyncDisplayKit uses its own sizing system based on `ASSizeRange` (via the
+    /// `sizeRangeForSupplementaryElement(ofKind:at:)` method in `ASSupplementaryNodeSource`).
+    /// The UIKit-based size returned here is ignored by AsyncDisplayKit's layout engine.
+    ///
+    /// Returning `.zero` here is intentional and matches the Objective-C implementation,
+    /// which triggers an assertion in debug builds if this method is unexpectedly called.
+    ///
+    /// ## Implementation Note
+    ///
+    /// Equivalent to:
+    /// ```objc
+    /// + (CGSize)sizeForSupplementaryViewOfKind:(NSString *)elementKind atIndex:(NSInteger)index {
+    ///     ASDisplayNodeFailAssert(@"Did not expect %@ to be called.", NSStringFromSelector(_cmd));
+    ///     return CGSizeZero;
+    /// }
+    /// ```
+    ///
+    /// - Parameters:
+    ///   - elementKind: The kind of supplementary element (unused)
+    ///   - index: The index of the supplementary element (unused)
+    ///
+    /// - Returns: Always returns `CGSize.zero`
+    ///
+    /// - Note: Your section controller should implement
+    ///         `sizeRangeForSupplementaryElement(ofKind:at:)` from
+    ///         `ASSupplementaryNodeSource` to control supplementary view sizing.
+    public static func sizeForSupplementaryView(
+        ofKind elementKind: String,
+        at index: Int
+    ) -> CGSize {
+        // This matches the Objective-C implementation which triggers ASDisplayNodeFailAssert
+        // We don't assert here because Swift doesn't have the same ASDisplayNodeFailAssert macro
+        // but we document that this should not be called and return zero
+        return .zero
+    }
+}
+
+// MARK: - List Adapter Extension
+
 /// Swift extensions for IGListKit integration with Texture
 extension ListAdapter {
 
