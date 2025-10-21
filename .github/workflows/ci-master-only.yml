@@ -1,9 +1,9 @@
-name: CI (master-only jobs)
+name: CI (development-only jobs)
 
 on:
   push:
     branches:
-      - master
+      - development
 
 jobs:
   cocoapods-lint:

@@ -3,7 +3,7 @@ name: CI (pull-requests-only jobs)
 on:
   pull_request:
     branches:
-      - master
+      - development
 
 jobs:
   buildsh:
