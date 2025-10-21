@@ -65,21 +65,7 @@ let package = Package(
         )
     ],
     traits: [
-        // Default traits - enabled by default for backwards compatibility with CocoaPods
-        .default(enabledTraits: [
-            "Video",
-            "MapKit",
-            "Photos",
-            "AssetsLibrary"
-        ]),
-
-        // Define all traits with descriptions
-        .init(name: "Video", description: "Video node support with AVFoundation and CoreMedia"),
-        .init(name: "MapKit", description: "MapKit integration for map nodes"),
-        .init(name: "Photos", description: "Photos framework support"),
-        .init(name: "AssetsLibrary", description: "Legacy AssetsLibrary support (iOS only)"),
-
-        // Optional traits - must be explicitly enabled
+        // Optional traits
         .init(name: "IGListKit", description: "IGListKit integration for advanced collection view support")
     ],
     dependencies: [
@@ -97,19 +83,21 @@ let package = Package(
             path: "spm/Sources/AsyncDisplayKit",
             publicHeadersPath: "include",
             cSettings: [
-                // PINRemoteImage is always available
+                // Always available features
                 .define("AS_PIN_REMOTE_IMAGE", to: "1"),
 
                 // Disable old TextNode by default for SPM
                 .define("AS_ENABLE_TEXTNODE", to: "0"),
 
                 // Trait-based conditional defines
-                .define("AS_USE_VIDEO", to: "1", .when(traits: ["Video"])),
-                .define("AS_USE_MAPKIT", to: "1", .when(traits: ["MapKit"])),
-                .define("AS_USE_PHOTOS", to: "1", .when(traits: ["Photos"])),
-                .define("AS_USE_ASSETS_LIBRARY", to: "1", .when(traits: ["AssetsLibrary"])),
                 .define("AS_IG_LIST_KIT", to: "1", .when(traits: ["IGListKit"])),
                 .define("AS_IG_LIST_DIFF_KIT", to: "1", .when(traits: ["IGListKit"])),
+
+                // Disabled features
+                .define("AS_USE_VIDEO", to: "0"),           // Not accessible from Swift via SPM
+                .define("AS_USE_MAPKIT", to: "0"),          // Not accessible from Swift via SPM
+                .define("AS_USE_PHOTOS", to: "0"),          // Partially accessible from Swift via SPM
+                .define("AS_USE_ASSETS_LIBRARY", to: "0"),  // Deprecated iOS 9.0, use Photos framework
 
                 // Always disabled for SPM
                 .define("IG_LIST_COLLECTION_VIEW", to: "0"),
@@ -147,13 +135,10 @@ let package = Package(
                 .headerSearchPath("tvOS")
             ],
             linkerSettings: [
-                .linkedFramework("AVFoundation", .when(traits: ["Video"])),
-                .linkedFramework("CoreMedia", .when(traits: ["Video"])),
-                .linkedFramework("CoreLocation", .when(traits: ["MapKit"])),
-                .linkedFramework("MapKit", .when(traits: ["MapKit"])),
-                .linkedFramework("Photos", .when(traits: ["Photos"])),
-                .linkedFramework("AssetsLibrary", .when(platforms: [.iOS], traits: ["AssetsLibrary"])),
                 .linkedLibrary("c++")
+                // Note: Video/MapKit/Photos frameworks not linked by default
+                // These features are not accessible from Swift via SPM due to conditional compilation
+                // Use CocoaPods or Carthage if you need these features, or use Objective-C code
             ]
         ),
         .target(

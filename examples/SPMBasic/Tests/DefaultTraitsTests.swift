@@ -4,9 +4,10 @@ import AsyncDisplayKit
 
 /// Tests that verify basic Texture functionality works via SPM
 ///
-/// Note: Default traits (Video, MapKit, Photos, AssetsLibrary) are enabled,
-/// but trait-specific Objective-C classes may not be accessible from Swift
-/// without additional bridging. These tests focus on core Texture functionality.
+/// Note: Video/MapKit/Photos features are not available via SPM due to Swift Package Manager
+/// limitations with conditionally compiled Objective-C classes (#if guards).
+/// These features remain available via CocoaPods and Carthage.
+/// These tests focus on core Texture functionality that works with SPM.
 
 @Suite("Basic Texture Nodes")
 struct BasicTextureNodesTests {
