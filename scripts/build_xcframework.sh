@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Build XCFramework using Carthage for SPM binary distribution
-# This script builds Texture.xcframework with all traits enabled (Video, MapKit, Photos, IGListKit)
+# This script builds Texture.xcframework with core features only
+# Note: Video/MapKit/Photos are not accessible from Swift via SPM (conditional compilation limitation)
 
 set -e
 set -o pipefail
@@ -66,21 +67,23 @@ echo ""
 # Configure build settings optimized for iOS 14+ binary distribution
 echo -e "${YELLOW}Build Configuration (Optimized for iOS 14+):${NC}"
 echo -e "${GREEN}  Enabled Features:${NC}"
-echo -e "    - Video support (ASVideoNode, ASVideoPlayerNode)"
-echo -e "    - Photos framework (ASPhotosFrameworkImageRequest)"
-echo -e "    - IGListKit integration"
-echo -e "    - New TextNode2 (modern, performant)"
+echo -e "    - Core nodes (ASDisplayNode, ASImageNode, ASTextNode2, etc.)"
+echo -e "    - Photos framework (ASMultiplexImageNode with PHAsset support)"
+echo -e "    - PINRemoteImage integration"
+echo -e "    - IGListKit integration (Objective-C API)"
+echo -e "    - TextNode2 (modern, performant)"
 echo -e "${RED}  Disabled Features:${NC}"
-echo -e "    - MapKit (ASMapNode) - niche use case, use source distribution if needed"
-echo -e "    - AssetsLibrary - deprecated iOS 9.0, replaced by Photos framework"
+echo -e "    - Video (ASVideoNode) - niche, heavy frameworks (AVFoundation + CoreMedia)"
+echo -e "    - MapKit (ASMapNode) - niche, rarely used (~10% of apps)"
+echo -e "    - AssetsLibrary - deprecated iOS 9.0"
 echo -e "    - Old TextNode - legacy, slower than TextNode2"
 echo ""
-echo -e "${BLUE}Note: Disabled features are still available via source distribution with traits${NC}"
+echo -e "${BLUE}Note: For Video/MapKit features, use CocoaPods/Carthage from original repository${NC}"
 echo ""
 
 # Export custom preprocessor definitions
 # Carthage/xcodebuild will pick these up via GCC_PREPROCESSOR_DEFINITIONS
-export GCC_PREPROCESSOR_DEFINITIONS='$(inherited) AS_ENABLE_TEXTNODE=0 AS_USE_ASSETS_LIBRARY=0 AS_USE_MAPKIT=0 AS_USE_PHOTOS=1 AS_USE_VIDEO=1'
+export GCC_PREPROCESSOR_DEFINITIONS='$(inherited) AS_ENABLE_TEXTNODE=0 AS_USE_ASSETS_LIBRARY=0 AS_USE_MAPKIT=0 AS_USE_PHOTOS=1 AS_USE_VIDEO=0'
 
 # Build with optimized settings
 # Note: BUILD_LIBRARY_FOR_DISTRIBUTION is automatically enabled by Carthage for XCFrameworks
@@ -177,21 +180,23 @@ echo -e "  - PINCache 3.0.4"
 echo -e "  - IGListKit ~> 5.0.0"
 echo ""
 echo -e "${GREEN}Enabled Features:${NC}"
-echo -e "  - Video support (ASVideoNode, ASVideoPlayerNode)"
-echo -e "  - Photos framework (modern photo/video access)"
-echo -e "  - IGListKit integration"
+echo -e "  - Core AsyncDisplayKit (all nodes, layout specs, etc.)"
+echo -e "  - Photos framework (ASMultiplexImageNode with PHAsset)"
+echo -e "  - PINRemoteImage integration"
+echo -e "  - IGListKit integration (Objective-C API)"
 echo -e "  - TextNode2 (modern text rendering)"
 echo ""
-echo -e "${YELLOW}Disabled Features (use source distribution if needed):${NC}"
+echo -e "${YELLOW}Disabled Features (use CocoaPods/Carthage if needed):${NC}"
+echo -e "  - Video (ASVideoNode) - niche, requires AVFoundation + CoreMedia"
 echo -e "  - MapKit (ASMapNode) - only ~10% of apps need maps"
-echo -e "  - AssetsLibrary - deprecated in iOS 9.0, use Photos framework"
+echo -e "  - AssetsLibrary - deprecated in iOS 9.0"
 echo -e "  - Old TextNode - legacy, replaced by TextNode2"
 echo ""
-echo -e "${BLUE}Why these features are disabled:${NC}"
-echo -e "  - Smaller binary size (~300KB reduction)"
-echo -e "  - Fewer framework dependencies to link"
+echo -e "${BLUE}Why Video/MapKit are disabled:${NC}"
+echo -e "  - Smaller binary size"
+echo -e "  - Fewer framework dependencies (AVFoundation, CoreMedia, MapKit)"
 echo -e "  - Faster app launch time"
-echo -e "  - Most apps (90%+) don't use ASMapNode"
+echo -e "  - Niche features used by minority of apps"
 echo ""
 echo -e "${BLUE}================================================${NC}"
 echo -e "${BLUE}Next Steps${NC}"

@@ -28,8 +28,9 @@ This is a community-maintained fork of [TextureGroup/Texture](https://github.com
 | **Build Time (source)** | 2-5 min | 2-5 min |
 | **Swift IGListKit API** | Modern Swift extension | Objective-C only |
 | **iOS Minimum** | 14.0 | 12.0 |
-| **SPM Video/MapKit/Photos** | Not available (SPM limitation) | Not available (SPM limitation) |
-| **Video/MapKit/Photos via CocoaPods** | Use original repo | Available |
+| **Photos (in binary)** | ✅ Included | N/A (SPM only) |
+| **Photos (in source)** | ❌ SPM limitation | ❌ SPM limitation |
+| **Video/MapKit** | Use original repo (CocoaPods) | Available (CocoaPods) |
 | **Deprecated Code** | Removed | Included |
 | **Automated Releases** | GitHub Actions | Manual |
 
@@ -53,7 +54,8 @@ targets: [
             .product(name: "AsyncDisplayKitBinary", package: "Texture")
         ],
         linkerSettings: [
-            .linkedLibrary("c++")
+            .linkedLibrary("c++"),
+            .linkedFramework("Photos")  // Required for ASMultiplexImageNode PHAsset support
         ]
     )
 ]
@@ -61,20 +63,19 @@ targets: [
 
 **Included in binary:**
 - All core nodes (ASDisplayNode, ASImageNode, ASTextNode2, ASButtonNode, etc.)
+- Photos framework (ASMultiplexImageNode with PHAsset support)
 - PINRemoteImage integration (image downloading/caching)
 - Collection views (ASCollectionNode, ASTableNode)
 - All layout specs (ASStackLayoutSpec, ASInsetLayoutSpec, etc.)
 - IGListKit integration (Objective-C API)
 
-**⚠️ Not available via SPM (both binary and source):**
-- Video (ASVideoNode, ASVideoPlayerNode) - SPM limitation
-- MapKit (ASMapNode) - SPM limitation
-- Photos framework integration - SPM limitation
+**Not included in binary (use CocoaPods/Carthage if needed):**
+- Video (ASVideoNode, ASVideoPlayerNode) - niche, heavy frameworks
+- MapKit (ASMapNode) - niche, rarely used
 - AssetsLibrary - Deprecated iOS 9.0
 
-**If you need Video/MapKit/Photos features:**
-- Use CocoaPods or Carthage (full feature support)
-- Or use these features from Objective-C code (.m files)
+**⚠️ SPM Source Distribution Limitation:**
+Video/MapKit/Photos are NOT accessible from Swift in source distribution due to SPM limitations with conditionally compiled Objective-C classes. Binary distribution has Photos available (Objective-C API).
 
 **Build time:** Instant (no compilation)
 
@@ -107,14 +108,10 @@ targets: [
 **Optional Features (enable via traits):**
 - IGListKit integration (advanced collection views with modern Swift API)
 
-**⚠️ SPM Limitations:**
-Video (ASVideoNode), MapKit (ASMapNode), and Photos features are **not available** via Swift Package Manager due to technical limitations. These Objective-C classes are wrapped in conditional compilation directives (`#if AS_USE_VIDEO`) which prevents them from being exported in the Swift module interface.
+**⚠️ SPM Source Distribution Limitations:**
+Video/MapKit/Photos are NOT accessible from Swift in source distribution due to SPM module interface generation limitations.
 
-**If you need Video/MapKit/Photos features:**
-- Use **CocoaPods** or **Carthage** (full feature support)
-- Or use these features from **Objective-C code** (.m files)
-
-**Future directions:** We're exploring solutions like Swift wrapper modules (TextureVideoExtensions, TextureMapKitExtensions) to provide Swift API for these features via SPM.
+**Note:** Photos IS available in binary distribution (see Option 1 above).
 
 **Build time:** 2-5 minutes
 
@@ -151,38 +148,22 @@ Read more: [IGListKit Integration Guide](Sources/TextureIGListKitExtensions/READ
 
 ---
 
-## Migrating from CocoaPods to SPM
+## Migrating from CocoaPods
 
-If you're migrating from CocoaPods, here's how the subspecs map to SPM features:
+**For detailed migration guide, see [Binary Distribution Guide](docs/BinaryDistribution.md#migration-guide)**
 
-| Feature | CocoaPods | SPM | Notes |
-|---------|-----------|-----|-------|
-| **Core** | `pod 'Texture'` (default) | `.product(name: "AsyncDisplayKit", ...)` | ✅ Always included |
-| **PINRemoteImage** | Included by default | Always included | ✅ Same behavior |
-| **Video** | Included by default | **Not available** | ❌ SPM limitation (see above) |
-| **MapKit** | Included by default | **Not available** | ❌ SPM limitation (see above) |
-| **Photos** | Included by default | **Not available** | ❌ SPM limitation (see above) |
-| **AssetsLibrary** | Included by default | **Removed** | ❌ Deprecated iOS 9.0, use Photos |
-| **IGListKit** | `pod 'Texture/IGListKit'` | Optional trait + product | ⚠️ Uses IGListKit 5.0+ |
-| **TextNode2** | `pod 'Texture/TextNode2'` | Enabled by default | ✅ Modern TextNode used |
-| **Yoga** | `pod 'Texture/Yoga'` | Not supported | Add as separate dependency |
-
-**Key differences:**
-- **TextNode2 is default**: SPM uses the modern TextNode implementation automatically (no legacy TextNode)
-- ❌ **Video/MapKit/Photos not available**: Due to Swift Package Manager limitations with conditionally compiled Objective-C classes
-- ❌ **AssetsLibrary removed**: Deprecated in iOS 9.0, use Photos framework instead
-- ⚠️ **IGListKit version**: SPM uses IGListKit 5.0+ instead of 4.x (breaking changes)
-- ℹ️ **Yoga**: Not integrated in SPM - add Yoga as a separate dependency if needed
+Quick summary:
+- ✅ Core nodes - same API
+- ✅ Photos - available in **binary** distribution
+- ❌ Video/MapKit - use CocoaPods/Carthage from original repo
+- ⚠️ IGListKit - uses version 5.0+ (breaking changes from 4.x)
 
 ### Note for Contributors
 
-When adding or removing source files in the `Source/` directory, you must regenerate the SPM symlink structure:
+When adding or removing source files, regenerate SPM layout:
 
 ```bash
-# Regenerate SPM layout
 swift scripts/generate_spm_sources_layout.swift
-
-# Commit the generated changes
 git add spm/Sources
 git commit -m "Update SPM layout for new/removed files"
 ```
@@ -239,15 +220,25 @@ git commit -m "Update SPM layout for new/removed files"
 - All layout specs
 - PINRemoteImage integration
 
-### SPM Limitations (Both Binary and Source)
+### Feature Comparison
 
-**Not available from Swift code:**
-- Video support (ASVideoNode, ASVideoPlayerNode) - use CocoaPods/Carthage
-- MapKit (ASMapNode) - use CocoaPods/Carthage
-- Photos framework integration - use CocoaPods/Carthage
-- AssetsLibrary - deprecated iOS 9.0
+| Feature | Binary (SPM) | Source (SPM) | CocoaPods/Carthage |
+|---------|-------------|--------------|-------------------|
+| **Photos** | ✅ Included | ❌ Not available | ✅ Available |
+| **Video/MapKit** | ❌ Not included | ❌ Not available | ✅ Available |
+| **IGListKit** | Objective-C API | Swift API | Objective-C API |
+| **Build Time** | Instant | 2-5 min | 2-5 min |
 
-These features are wrapped in `#if` preprocessor directives which prevents Swift Package Manager from exporting them in the module interface. They remain available via CocoaPods/Carthage or from Objective-C .m files.
+**For detailed comparison**, see [Binary Distribution Guide](docs/BinaryDistribution.md)
+
+### Future Directions
+
+We're exploring additional distribution options based on community demand:
+- **Additional binary variants** - `AsyncDisplayKitBinaryFull` with Video/MapKit for apps that need these features
+- **Swift wrapper modules** - TextureVideoExtensions, TextureMapKitExtensions to provide Swift API for conditional features
+
+**Why not include Video/MapKit by default?**
+These are niche features (~10-30% of apps) that require heavy frameworks (AVFoundation, CoreMedia, MapKit). Keeping the default binary lightweight benefits the majority of users.
 
 ---
 
@@ -282,7 +273,7 @@ These features are wrapped in `#if` preprocessor directives which prevents Swift
 
 For CocoaPods and Carthage, please use the [original repository](https://github.com/TextureGroup/Texture).
 
-**Note:** If you need Video (ASVideoNode), MapKit (ASMapNode), or Photos features, you must use CocoaPods or Carthage as these are not available via SPM due to technical limitations.
+**Note:** Photos is available in binary distribution. For Video/MapKit, use CocoaPods/Carthage from original repository.
 
 ---
 
