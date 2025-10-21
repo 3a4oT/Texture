@@ -123,7 +123,7 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/3a4oT/Texture.git",
-            from: "3.2.1",
+            from: "3.2.2",
             traits: [
                 .init(name: "IGListKit")  // Enable IGListKit trait
             ]

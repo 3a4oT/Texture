@@ -173,7 +173,7 @@ let package = Package(
         // Binary target - precompiled XCFramework
         .binaryTarget(
             name: "AsyncDisplayKitBinary",
-            url: "https://github.com/3a4oT/Texture/releases/download/3.2.1/Texture.xcframework.zip",
+            url: "https://github.com/3a4oT/Texture/releases/download/3.2.2/Texture.xcframework.zip",
             checksum: "d20327f6c55f8cf43b5e9076dbca8ca9c130ec7a3a8d0f4034d90a53f9eb1765"
         ),
 

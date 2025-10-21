@@ -76,8 +76,8 @@ Disabled Features (use CocoaPods/Carthage if needed):
 ### 3. Create Git Tag
 
 ```bash
-# Choose semantic version (e.g., 3.2.1, 3.3.0)
-VERSION="3.2.1"
+# Choose semantic version (e.g., 3.2.2, 3.3.0)
+VERSION="3.2.2"
 
 # Create and push tag
 git tag $VERSION
