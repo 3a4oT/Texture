@@ -3,6 +3,30 @@
 
 import PackageDescription
 
+// MARK: - Binary vs Source Distribution
+//
+// This package supports both binary (precompiled XCFramework) and source distribution:
+//
+// Binary Distribution (faster builds):
+//   - Product: "AsyncDisplayKitBinary" (when available)
+//   - Includes: Core AsyncDisplayKit, PINRemoteImage, TextNode2, IGListKit (Objective-C API)
+//   - Best for: Production apps, faster CI builds
+//   - Build time: Instant (pre-compiled)
+//
+// Source Distribution (customizable):
+//   - Product: "AsyncDisplayKit" (default)
+//   - Includes: Same as binary + optional IGListKit trait (Swift API)
+//   - Best for: Development, debugging, custom configurations
+//   - Build time: 2-5 minutes
+//
+// ⚠️ SPM Limitations (both binary and source):
+// Video (ASVideoNode), MapKit (ASMapNode), and Photos features are NOT available from Swift
+// due to SPM limitations with conditionally compiled Objective-C classes (#if AS_USE_VIDEO).
+// These features remain available via CocoaPods and Carthage, or from Objective-C code (.m files).
+//
+// Note: Binary targets are currently commented out until first release is published.
+// Uncomment and update the URL/checksum after creating a GitHub release.
+
 // AsyncDisplayKit dependencies
 let igListKitDep: Target.Dependency = .product(
     name: "IGListKit",
@@ -23,10 +47,25 @@ let package = Package(
         .macCatalyst(.v13)
     ],
     products: [
+        // Default product - uses source distribution
+        // TODO: After first binary release, change to ["AsyncDisplayKitBinaryWrapper"] for faster builds
         .library(
             name: "AsyncDisplayKit",
             targets: ["AsyncDisplayKit"]
         ),
+
+        // Source distribution - always available for development/debugging
+        .library(
+            name: "AsyncDisplayKitSource",
+            targets: ["AsyncDisplayKit"]
+        ),
+
+        // Binary distribution - uncomment after first release
+        // .library(
+        //     name: "AsyncDisplayKitBinary",
+        //     targets: ["AsyncDisplayKitBinaryWrapper"]
+        // ),
+
         .library(
             name: "TextureIGListKitExtensions",
             targets: ["TextureIGListKitExtensions"]
@@ -123,7 +162,45 @@ let package = Package(
                 // proper @MainActor annotations, we can migrate to Swift 6 mode.
                 .swiftLanguageMode(.v5)
             ]
-        )
+        ),
+
+        // MARK: - Binary Distribution Targets (Commented until first release)
+        //
+        // Instructions to enable binary distribution:
+        // 1. Run: ./scripts/build_xcframework.sh
+        // 2. Create GitHub release and upload Texture.xcframework.zip
+        // 3. Uncomment the targets below
+        // 4. Update URL to: https://github.com/TextureGroup/Texture/releases/download/<version>/Texture.xcframework.zip
+        // 5. Update checksum with value from build script output
+
+        // Binary target - precompiled XCFramework with all features enabled
+        // .binaryTarget(
+        //     name: "AsyncDisplayKitBinary",
+        //     url: "https://github.com/TextureGroup/Texture/releases/download/<VERSION>/Texture.xcframework.zip",
+        //     checksum: "<CHECKSUM_FROM_BUILD_SCRIPT>"
+        // ),
+
+        // Wrapper target - links binary with SPM dependencies
+        // This ensures dependencies (PINRemoteImage, IGListKit) are properly resolved
+        // .target(
+        //     name: "AsyncDisplayKitBinaryWrapper",
+        //     dependencies: [
+        //         "AsyncDisplayKitBinary",
+        //         "PINRemoteImage",
+        //         .product(name: "IGListKit", package: "IGListKit"),
+        //         .product(name: "IGListDiffKit", package: "IGListKit")
+        //     ],
+        //     path: "spm/BinaryWrapper",
+        //     linkerSettings: [
+        //         .linkedFramework("AVFoundation"),
+        //         .linkedFramework("CoreMedia"),
+        //         .linkedFramework("CoreLocation"),
+        //         .linkedFramework("MapKit"),
+        //         .linkedFramework("Photos"),
+        //         .linkedFramework("AssetsLibrary", .when(platforms: [.iOS])),
+        //         .linkedLibrary("c++")
+        //     ]
+        // )
     ],
     cLanguageStandard: .c11,
     cxxLanguageStandard: .cxx20
