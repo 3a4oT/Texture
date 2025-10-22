@@ -1,0 +1,156 @@
+name: Build and Release XCFramework
+
+# Trigger on new tags (e.g., v3.0.0, 3.1.0-beta)
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  build-xcframework:
+    name: Build XCFramework with Carthage
+    runs-on: macos-15
+
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.0.1.app/Contents/Developer
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get tag version
+        id: get_version
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          echo "version=${TAG}" >> $GITHUB_OUTPUT
+          echo "Building version: ${TAG}"
+
+      - name: Install Carthage
+        run: |
+          brew update
+          brew install carthage
+          carthage version
+
+      - name: Cache Carthage dependencies
+        uses: actions/cache@v4
+        with:
+          path: Carthage
+          key: ${{ runner.os }}-carthage-${{ hashFiles('**/Cartfile.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-carthage-
+
+      - name: Build XCFramework
+        run: |
+          chmod +x ./scripts/build_xcframework.sh
+          ./scripts/build_xcframework.sh
+
+      - name: Verify build artifacts
+        run: |
+          if [ ! -f "build/Texture.xcframework.zip" ]; then
+            echo "Error: XCFramework ZIP not found!"
+            exit 1
+          fi
+
+          echo "✓ XCFramework ZIP found"
+          ls -lh build/Texture.xcframework.zip
+
+          # Calculate and display checksum
+          CHECKSUM=$(swift package compute-checksum build/Texture.xcframework.zip)
+          echo "Checksum: ${CHECKSUM}"
+          echo "checksum=${CHECKSUM}" >> $GITHUB_OUTPUT
+        id: verify
+
+      - name: Create Release Notes
+        id: release_notes
+        run: |
+          cat << EOF > release_notes.md
+          # Texture ${{ steps.get_version.outputs.version }}
+
+          ## Binary Distribution (XCFramework)
+
+          This release includes a precompiled XCFramework for faster build times.
+
+          ### Included Features
+          - ✅ Core AsyncDisplayKit (all nodes, layout specs, TextNode2)
+          - ✅ Photos framework (ASMultiplexImageNode with PHAsset support)
+          - ✅ PINRemoteImage integration (image downloading/caching)
+          - ✅ IGListKit integration (Objective-C API)
+
+          ### Not Included (use CocoaPods/Carthage if needed)
+          - ❌ Video support (ASVideoNode) - niche feature, heavy frameworks
+          - ❌ MapKit integration (ASMapNode) - rarely used
+          - ❌ AssetsLibrary - deprecated iOS 9.0
+
+          ### Usage
+
+          #### Swift Package Manager (Binary - Fast)
+          \`\`\`swift
+          dependencies: [
+              .package(url: "https://github.com/TextureGroup/Texture", from: "${{ steps.get_version.outputs.version }}")
+          ],
+          targets: [
+              .target(
+                  name: "YourTarget",
+                  dependencies: [
+                      .product(name: "AsyncDisplayKitBinary", package: "Texture")
+                  ]
+              )
+          ]
+          \`\`\`
+
+          #### Swift Package Manager (Source - Customizable)
+          \`\`\`swift
+          dependencies: [
+              .product(name: "AsyncDisplayKitSource", package: "Texture")
+          ]
+          \`\`\`
+
+          ### Dependencies
+          - PINRemoteImage 3.0.4
+          - PINCache 3.0.4
+          - IGListKit ~> 5.0.0
+
+          ### Package.swift Integration
+
+          After this release, update your Package.swift:
+
+          \`\`\`swift
+          .binaryTarget(
+              name: "AsyncDisplayKitBinary",
+              url: "https://github.com/TextureGroup/Texture/releases/download/${{ steps.get_version.outputs.version }}/Texture.xcframework.zip",
+              checksum: "${{ steps.verify.outputs.checksum }}"
+          )
+          \`\`\`
+
+          ---
+
+          **Checksum:** \`${{ steps.verify.outputs.checksum }}\`
+
+          **File:** \`Texture.xcframework.zip\`
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            build/Texture.xcframework.zip
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ contains(steps.get_version.outputs.version, 'alpha') || contains(steps.get_version.outputs.version, 'beta') || contains(steps.get_version.outputs.version, 'rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Output Summary
+        run: |
+          echo "## 🎉 Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.get_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**XCFramework:** Texture.xcframework.zip" >> $GITHUB_STEP_SUMMARY
+          echo "**Checksum:** \`${{ steps.verify.outputs.checksum }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Verify the release at: https://github.com/${{ github.repository }}/releases/tag/${{ steps.get_version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "2. Update Package.swift with the checksum above" >> $GITHUB_STEP_SUMMARY
+          echo "3. Test binary distribution in a sample project" >> $GITHUB_STEP_SUMMARY

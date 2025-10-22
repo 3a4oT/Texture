@@ -30,3 +30,11 @@ playground.xcworkspace
 # Carthage
 Carthage/Checkouts
 Carthage/Build
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# AI Tools
+.claude/

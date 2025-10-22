@@ -1,2 +1,8 @@
+# Dependencies synchronized with Package.swift
+# PINRemoteImage (from: "3.0.4" in Package.swift)
 github "pinterest/PINRemoteImage" "3.0.4"
 github "pinterest/PINCache" "3.0.4"
+
+# IGListKit (from: "5.0.0" in Package.swift)
+# Used when building binary with all traits enabled
+github "Instagram/IGListKit" ~> 5.0.0
