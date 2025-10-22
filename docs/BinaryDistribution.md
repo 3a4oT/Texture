@@ -326,7 +326,7 @@ adapter.setCollectionNode(node)
 
 1. In Xcode: **File → Add Package Dependencies**
 2. Enter URL: `https://github.com/3a4oT/Texture`
-3. Select version: `3.2.5` or later
+3. Select version: `3.2.8` or later
 4. Add product: **AsyncDisplayKitBinary**
 
 **That's it!** SPM automatically links all required frameworks and dependencies:
@@ -341,7 +341,7 @@ For library targets, you must manually specify linkerSettings:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/3a4oT/Texture", from: "3.2.5")
+    .package(url: "https://github.com/3a4oT/Texture", from: "3.2.8")
 ],
 targets: [
     .target(
@@ -374,7 +374,7 @@ adapter.setASDKCollectionNode(node)
 dependencies: [
     .package(
         url: "https://github.com/TextureGroup/Texture",
-        from: "3.2.5",
+        from: "3.2.8",
         traits: [.init(name: "IGListKit")]  // Enable IGListKit trait
     )
 ],
@@ -693,7 +693,7 @@ We're considering additional binary distributions based on community demand:
 **Usage (proposed):**
 ```swift
 dependencies: [
-    .package(url: "https://github.com/3a4oT/Texture", from: "3.2.5")
+    .package(url: "https://github.com/3a4oT/Texture", from: "3.2.8")
 ],
 targets: [
     .target(

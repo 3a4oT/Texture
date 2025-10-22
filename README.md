@@ -39,7 +39,7 @@ Pre-compiled XCFramework. Best for production apps and CI.
 **Xcode UI (Recommended - No Manual Linking):**
 1. File → Add Package Dependencies
 2. URL: `https://github.com/3a4oT/Texture`
-3. Version: `3.2.5` or later
+3. Version: `3.2.8` or later
 4. Add product: **AsyncDisplayKitBinary**
 
 Done! SPM automatically links Photos framework, libc++, PINRemoteImage, and IGListKit.
@@ -47,7 +47,7 @@ Done! SPM automatically links Photos framework, libc++, PINRemoteImage, and IGLi
 **Package.swift (Manual Linking Required for Libraries):**
 ```swift
 dependencies: [
-    .package(url: "https://github.com/3a4oT/Texture", from: "3.2.5")
+    .package(url: "https://github.com/3a4oT/Texture", from: "3.2.8")
 ],
 targets: [
     .target(
@@ -88,7 +88,7 @@ Same core features as binary, plus optional modern Swift API for IGListKit integ
 ```swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/3a4oT/Texture", from: "3.2.5")
+    .package(url: "https://github.com/3a4oT/Texture", from: "3.2.8")
 ],
 targets: [
     .target(
@@ -244,13 +244,13 @@ These are niche features (~10-30% of apps) that require heavy frameworks (AVFoun
 
 **Binary (Fast):**
 ```swift
-.package(url: "https://github.com/3a4oT/Texture", from: "3.2.5"),
+.package(url: "https://github.com/3a4oT/Texture", from: "3.2.8"),
 .product(name: "AsyncDisplayKitBinary", package: "Texture")
 ```
 
 **Source (Same Features, Swift API):**
 ```swift
-.package(url: "https://github.com/3a4oT/Texture", from: "3.2.5"),
+.package(url: "https://github.com/3a4oT/Texture", from: "3.2.8"),
 .product(name: "AsyncDisplayKit", package: "Texture")
 ```
 
@@ -258,7 +258,7 @@ These are niche features (~10-30% of apps) that require heavy frameworks (AVFoun
 ```swift
 .package(
     url: "https://github.com/3a4oT/Texture",
-    from: "3.2.5",
+    from: "3.2.8",
     traits: [.init(name: "IGListKit")]
 ),
 .product(name: "AsyncDisplayKit", package: "Texture"),
@@ -336,7 +336,7 @@ We periodically sync with upstream to get core improvements.
 
 This fork uses automated releases via GitHub Actions:
 
-1. Push a tag: `git tag 3.2.5 && git push origin 3.2.5`
+1. Push a tag: `git tag 3.2.8 && git push origin 3.2.8`
 2. GitHub Actions builds XCFramework
 3. Creates release with binary artifact
 4. Generates checksum for SPM
