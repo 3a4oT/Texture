@@ -9,7 +9,8 @@
 
 #import <AsyncDisplayKit/ASAvailability.h>
 
-#if AS_IG_LIST_KIT
+// IGListKit integration is always available in binary XCFramework distribution
+#if __has_include(<IGListKit/IGListKit.h>)
 
 #import <IGListKit/IGListKit.h>
 
@@ -34,4 +35,4 @@ NS_ASSUME_NONNULL_BEGIN
 
 NS_ASSUME_NONNULL_END
 
-#endif // AS_IG_LIST_KIT
+#endif // __has_include(<IGListKit/IGListKit.h>)

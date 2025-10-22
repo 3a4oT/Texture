@@ -6,10 +6,11 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 
-#if AS_IG_LIST_DIFF_KIT
+// IGListDiffKit integration is always available in binary XCFramework distribution
+#if __has_include(<IGListDiffKit/IGListDiffKit.h>)
 #import <AsyncDisplayKit/ASLayout.h>
 #import <IGListDiffKit/IGListDiffKit.h>
 
 @interface ASLayout(IGListDiffKit) <IGListDiffable>
 @end
-#endif // AS_IG_LIST_DIFF_KIT
+#endif // __has_include(<IGListDiffKit/IGListDiffKit.h>)
