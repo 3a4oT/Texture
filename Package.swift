@@ -54,11 +54,10 @@ let package = Package(
         ),
 
         // Binary distribution - pre-compiled XCFramework
-        // TODO: Uncomment after 3.2.7 release is published
-        // .library(
-        //     name: "AsyncDisplayKitBinary",
-        //     targets: ["AsyncDisplayKitBinaryWrapper"]
-        // ),
+        .library(
+            name: "AsyncDisplayKitBinary",
+            targets: ["AsyncDisplayKitBinaryWrapper"]
+        ),
 
         .library(
             name: "TextureIGListKitExtensions",
@@ -165,32 +164,30 @@ let package = Package(
         // See docs/BinaryDistribution.md for details
 
         // Binary target - precompiled XCFramework
-        // TODO: Uncomment after 3.2.7 release is published and update URL/checksum
-        // .binaryTarget(
-        //     name: "AsyncDisplayKitBinary",
-        //     url: "https://github.com/3a4oT/Texture/releases/download/3.2.7/Texture.xcframework.zip",
-        //     checksum: "PLACEHOLDER_UPDATE_AFTER_RELEASE"
-        // ),
+        .binaryTarget(
+            name: "AsyncDisplayKitBinary",
+            url: "https://github.com/3a4oT/Texture/releases/download/3.2.7/Texture.xcframework.zip",
+            checksum: "4b79b7816fb04082506d0fdf96ce40513b70c36cc83991b0d01fbbfb5e31b8d8"
+        ),
 
         // Wrapper target - links binary with SPM dependencies
         // This ensures dependencies (PINRemoteImage, IGListKit) are properly resolved
-        // TODO: Uncomment after 3.2.7 release is published
-        // .target(
-        //     name: "AsyncDisplayKitBinaryWrapper",
-        //     dependencies: [
-        //         "AsyncDisplayKitBinary",
-        //         "PINRemoteImage",
-        //         .product(name: "IGListKit", package: "IGListKit"),
-        //         .product(name: "IGListDiffKit", package: "IGListKit")
-        //     ],
-        //     path: "spm/BinaryWrapper",
-        //     linkerSettings: [
-        //         .linkedFramework("Photos"),  // Required for ASMultiplexImageNode PHAsset support
-        //         .linkedLibrary("c++")
-        //         // Note: Video/MapKit features not included in binary
-        //         // Use CocoaPods/Carthage if you need ASVideoNode or ASMapNode
-        //     ]
-        // )
+        .target(
+            name: "AsyncDisplayKitBinaryWrapper",
+            dependencies: [
+                "AsyncDisplayKitBinary",
+                "PINRemoteImage",
+                .product(name: "IGListKit", package: "IGListKit"),
+                .product(name: "IGListDiffKit", package: "IGListKit")
+            ],
+            path: "spm/BinaryWrapper",
+            linkerSettings: [
+                .linkedFramework("Photos"),  // Required for ASMultiplexImageNode PHAsset support
+                .linkedLibrary("c++")
+                // Note: Video/MapKit features not included in binary
+                // Use CocoaPods/Carthage if you need ASVideoNode or ASMapNode
+            ]
+        )
     ],
     cLanguageStandard: .c11,
     cxxLanguageStandard: .cxx20
