@@ -158,7 +158,7 @@ let package = Package(
         .binaryTarget(
             name: "AsyncDisplayKitBinary",
             url: "https://github.com/3a4oT/Texture/releases/download/4.0.1/Texture.xcframework.zip",
-            checksum: "3c44b62ef5fc74dead2a1283d4ad4e2403e91206abb31ae5c2cb564bb7b42ac6"
+            checksum: "78089facb76ab8eb2fbbd24657c0ef8c3385f610dc7acee200277759952e7d94"
         ),
 
         // Wrapper target - links binary with SPM dependencies
