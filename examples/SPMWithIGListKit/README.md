@@ -4,14 +4,14 @@ This example demonstrates how to use Texture with IGListKit in a Swift Package M
 
 ## What This Example Shows
 
-- Enabling IGListKit trait in a SPM package
+- Using Texture with IGListKit in a SPM package
 - Using Pure Swift API for Texture + IGListKit integration
-- Testing that trait activation works correctly
+- Testing the integration works correctly
 
 ## Key Files
 
-- **Package.swift** - Shows how to enable IGListKit trait
-- **Tests/** - Verifies trait enables IGListKit dependency correctly
+- **Package.swift** - Shows how to configure Texture with IGListKit
+- **Tests/** - Verifies IGListKit integration works correctly
 
 ## Package.swift Configuration
 
@@ -19,9 +19,15 @@ This example demonstrates how to use Texture with IGListKit in a Swift Package M
 dependencies: [
     .package(
         url: "https://github.com/3a4oT/Texture.git",
-        from: "3.2.5",
-        traits: [
-            .init(name: "IGListKit")  // Enable IGListKit trait
+        from: "4.0.0"
+    )
+],
+targets: [
+    .target(
+        name: "YourTarget",
+        dependencies: [
+            .product(name: "AsyncDisplayKit", package: "Texture"),
+            .product(name: "TextureIGListKitExtensions", package: "Texture")
         ]
     )
 ]

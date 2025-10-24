@@ -30,21 +30,27 @@ ASIGListKitSPM/
 
 ## Why Local Package Wrapper?
 
-As of Xcode 26.0.1, Xcode does not provide UI for enabling SPM traits in app targets. The local package wrapper (`UICoreKit`) enables the IGListKit trait, which the app then imports.
+The local package wrapper (`UICoreKit`) demonstrates a common pattern for iOS app projects that want to centralize dependencies.
 
 ## Key Implementation Details
 
 ### UICoreKit/Package.swift
 
-Shows how to enable IGListKit trait for use in an app:
+Shows how to set up Texture dependencies for use in an app:
 
 ```swift
 dependencies: [
     .package(
         url: "https://github.com/3a4oT/Texture.git",
-        from: "3.2.5",
-        traits: [
-            .init(name: "IGListKit")  // Enable trait here
+        from: "4.0.0"
+    )
+],
+targets: [
+    .target(
+        name: "UICoreKit",
+        dependencies: [
+            .product(name: "AsyncDisplayKit", package: "Texture"),
+            .product(name: "TextureIGListKitExtensions", package: "Texture")
         ]
     )
 ]

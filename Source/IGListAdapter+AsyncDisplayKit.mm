@@ -12,7 +12,7 @@
 #if AS_IG_LIST_KIT
 
 #import <AsyncDisplayKit/IGListAdapter+AsyncDisplayKit.h>
-#import <AsyncDisplayKit/ASIGListAdapterBasedDataSource.h>
+#import "Private/ASIGListAdapterBasedDataSource.h"
 
 @implementation IGListAdapter (AsyncDisplayKit)
 

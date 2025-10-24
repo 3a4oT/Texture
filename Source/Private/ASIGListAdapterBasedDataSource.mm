@@ -346,12 +346,18 @@ typedef struct {
 }
 #endif
 
-/// Ensure updater won't call reloadData on us.
+/// Configure updater for optimal AsyncDisplayKit compatibility and performance.
+///
+/// IGListKit 5.0+ changes:
+/// - allowsBackgroundReloading was removed (caused issues with animations/snapshots)
+/// - allowsBackgroundDiffing enables background thread diffing for better performance
+/// - Safe to use with AsyncDisplayKit's asynchronous rendering
 + (void)configureUpdater:(id<IGListUpdatingDelegate>)updater
 {
   // Cast to NSObject will be removed after https://github.com/Instagram/IGListKit/pull/435
   if ([(id<NSObject>)updater isKindOfClass:[IGListAdapterUpdater class]]) {
-    [(IGListAdapterUpdater *)updater setAllowsBackgroundReloading:NO];
+    // Enable background diffing for improved scroll performance (IGListKit 5.0+)
+    [(IGListAdapterUpdater *)updater setAllowsBackgroundDiffing:YES];
   } else {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{

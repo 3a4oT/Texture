@@ -15,15 +15,15 @@ This document explains how to create a new release of the Texture binary distrib
 ### 1. Prepare Release
 
 ```bash
-# Ensure you're on binary-target branch
-git checkout binary-target
+# Ensure you're on development branch
+git checkout development
 
 # Pull latest changes
-git pull origin binary-target
+git pull origin development
 
-# Verify all tests pass
-./build.sh spm-texture-basic
-./build.sh spm-texture-iglistkit
+# Verify all tests pass (SPM and Carthage)
+./build.sh spm
+./build.sh carthage
 
 # Clean build directory
 rm -rf build/
@@ -202,7 +202,7 @@ Commit and push:
 ```bash
 git add Package.swift
 git commit -m "Update Package.swift with binary target for $VERSION"
-git push origin binary-target
+git push origin development
 ```
 
 ### 6. Verify Release

@@ -16,7 +16,6 @@
 #import <AsyncDisplayKit/_ASCollectionViewCell.h>
 #import <AsyncDisplayKit/_ASCollectionReusableView.h>
 
-
 @implementation ASIGListSectionControllerMethods
 
 + (__kindof UICollectionViewCell *)cellForItemAtIndex:(NSInteger)index sectionController:(IGListSectionController *)sectionController

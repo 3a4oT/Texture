@@ -60,7 +60,6 @@
 #import <AsyncDisplayKit/ASInsetLayoutSpec.h>
 #import <AsyncDisplayKit/ASIntegerMap.h>
 #import <AsyncDisplayKit/ASInternalHelpers.h>
-#import <AsyncDisplayKit/ASLayout+IGListDiffKit.h>
 #import <AsyncDisplayKit/ASLayout.h>
 #import <AsyncDisplayKit/ASLayoutController.h>
 #import <AsyncDisplayKit/ASLayoutElement.h>
@@ -111,10 +110,8 @@
 #import <AsyncDisplayKit/ASWeakProxy.h>
 #import <AsyncDisplayKit/ASWeakSet.h>
 #import <AsyncDisplayKit/AsyncDisplayKit+Debug.h>
-#import <AsyncDisplayKit/AsyncDisplayKit+IGListKitMethods.h>
 #import <AsyncDisplayKit/AsyncDisplayKit+Tips.h>
 #import <AsyncDisplayKit/CoreGraphics+ASConvenience.h>
-#import <AsyncDisplayKit/IGListAdapter+AsyncDisplayKit.h>
 #import <AsyncDisplayKit/NSArray+Diffing.h>
 #import <AsyncDisplayKit/NSMutableAttributedString+TextKitAdditions.h>
 #import <AsyncDisplayKit/UICollectionViewLayout+ASConvenience.h>

@@ -1,94 +1,108 @@
-# Texture (Modern SPM Fork)
+# Texture (Modern SPM & Carthage Fork)
 
-Modern Swift Package Manager distribution of Texture (AsyncDisplayKit) with binary XCFramework support.
+> **This is a community fork** focused on Swift Package Manager and Carthage distribution.
+>
+> **Original repository:** [TextureGroup/Texture](https://github.com/TextureGroup/Texture) (full feature set with all package managers)
 
 [![Swift Package Manager](https://img.shields.io/badge/Swift%20Package%20Manager-compatible-brightgreen.svg)](https://swift.org/package-manager/)
 [![Platform](https://img.shields.io/badge/platforms-iOS%2014%2B%20%7C%20tvOS%2014%2B-orange.svg)](https://github.com/3a4oT/Texture)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/TextureGroup/Texture/blob/master/LICENSE)
-
-## Why This Fork?
-
-This is a community-maintained fork of [TextureGroup/Texture](https://github.com/TextureGroup/Texture) focused on:
-
-- **Binary XCFramework distribution** for faster builds
-- **Modern Swift API** for IGListKit integration
-- **Active SPM support** with package traits and automated releases
-
-**Original repository:** [TextureGroup/Texture](https://github.com/TextureGroup/Texture)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 ---
 
-## Key Features
+## What is This Fork?
 
-| Feature | This Fork | Original |
-|---------|-----------|----------|
-| **Binary Distribution** | XCFramework available | Source only |
-| **Swift IGListKit API** | Modern Swift extension | Objective-C only |
-| **Photos (in binary)** | ✅ Included | N/A |
-| **Photos (in source)** | ❌ SPM limitation | ❌ SPM limitation |
-| **Video/MapKit** | Use original repo | Available (CocoaPods) |
+This is a **specialized fork** of Texture (AsyncDisplayKit) that:
+
+### ✅ Maintains
+- **Swift Package Manager** (source & binary)
+- **Carthage** (XCFramework distribution)
+- **Core Texture functionality** (nodes, layouts, collections)
+- **IGListKit integration**
+- **PINRemoteImage integration**
+
+### ❌ Removed (in this fork)
+- **21 example projects** - Kept only SPM-focused examples
+- **Legacy infrastructure** - Removed outdated tooling
+
+### 🎯 Why This Fork Exists
+
+1. **Cleaner SPM/Carthage experience** - Streamlined for modern package managers
+2. **Binary XCFramework** - Pre-compiled for faster builds
+3. **Modern CI** - SPM and Carthage only
+4. **Honest about limitations** - Clear documentation on what works and what doesn't
+
+**If you need Video/MapKit or the full original codebase:** Use the [original repository](https://github.com/TextureGroup/Texture).
+
+---
+
+## Distribution Methods
+
+| Method | Type | Build Time | Use Case |
+|--------|------|-----------|----------|
+| **SPM Source** | Static library | 2-5 min | Development, debugging |
+| **SPM Binary** | Dynamic framework (XCFramework) | Instant | Production, CI |
+| **Carthage** | Dynamic framework (XCFramework) | 5-10 min | Traditional workflow |
+
+### Key Differences
+
+**Static vs Dynamic:**
+
+**SPM Source (Static):**
+- Compiled into your app binary
+- No separate framework file
+- Smaller disk footprint
+- Debug-friendly
+
+**SPM Binary / Carthage (Dynamic):**
+- Separate `.framework` file
+- Shared between targets
+- Faster incremental builds
+- Pre-compiled (Binary only)
+
+**IGListKit Always Required:**
+
+This fork differs from the original by **always including IGListKit as a required dependency**. The original Texture allows using AsyncDisplayKit without IGListKit, but this fork simplifies the architecture by making IGListKit mandatory:
+
+- ✅ **This fork:** IGListKit always included (simplified, opinionated)
+- ⚠️ **Original:** IGListKit is optional (more flexible, more complex)
 
 ---
 
 ## Quick Start
 
-### Option 1: Binary Distribution (Recommended for Most Apps)
+### Option 1: SPM Binary (Recommended for Apps)
 
-Pre-compiled XCFramework. Best for production apps and CI.
+Pre-compiled XCFramework. Instant build time.
 
-**Xcode UI (Recommended - No Manual Linking):**
+**Xcode UI:**
 1. File → Add Package Dependencies
 2. URL: `https://github.com/3a4oT/Texture`
-3. Version: `3.2.8` or later
+3. Version: `4.0.0` or later
 4. Add product: **AsyncDisplayKitBinary**
 
-Done! SPM automatically links Photos framework, libc++, PINRemoteImage, and IGListKit.
-
-**Package.swift (Manual Linking Required for Libraries):**
+**Package.swift:**
 ```swift
 dependencies: [
-    .package(url: "https://github.com/3a4oT/Texture", from: "3.2.8")
+    .package(url: "https://github.com/3a4oT/Texture", from: "4.0.0")
 ],
 targets: [
     .target(
         name: "YourApp",
         dependencies: [
             .product(name: "AsyncDisplayKitBinary", package: "Texture")
-        ],
-        linkerSettings: [
-            .linkedLibrary("c++"),
-            .linkedFramework("Photos")  // Required for ASMultiplexImageNode PHAsset support
         ]
     )
 ]
 ```
 
-Note: linkerSettings only needed for library targets, not app targets when using Xcode UI.
+### Option 2: SPM Source
 
-**Included in binary:**
-- All core nodes (ASDisplayNode, ASImageNode, ASTextNode2, ASButtonNode, etc.)
-- Photos framework (ASMultiplexImageNode with PHAsset support)
-- PINRemoteImage integration (image downloading/caching)
-- Collection views (ASCollectionNode, ASTableNode)
-- All layout specs (ASStackLayoutSpec, ASInsetLayoutSpec, etc.)
-- IGListKit integration (Objective-C API)
-
-**Not included in binary (use CocoaPods/Carthage if needed):**
-- Video (ASVideoNode, ASVideoPlayerNode) - niche, heavy frameworks
-- MapKit (ASMapNode) - niche, rarely used
-- AssetsLibrary - Deprecated iOS 9.0
-
-**⚠️ SPM Source Distribution Limitation:**
-Video/MapKit/Photos are NOT accessible from Swift in source distribution due to SPM limitations with conditionally compiled Objective-C classes. Binary distribution has Photos available (Objective-C API).
-
-### Option 2: Source Distribution (Same Features, Modern Swift API)
-
-Same core features as binary, plus optional modern Swift API for IGListKit integration.
+Same features, but compiles from source. Useful for debugging.
 
 ```swift
-// Package.swift
 dependencies: [
-    .package(url: "https://github.com/3a4oT/Texture", from: "3.2.8")
+    .package(url: "https://github.com/3a4oT/Texture", from: "4.0.0")
 ],
 targets: [
     .target(
@@ -100,254 +114,253 @@ targets: [
 ]
 ```
 
-**Default Features (included automatically):**
-- Core AsyncDisplayKit (ASDisplayNode, ASImageNode, ASTextNode2, ASButtonNode, etc.)
-- PINRemoteImage integration (ASPINRemoteImageDownloader)
-- Collection views (ASCollectionNode, ASTableNode)
-- Layout specs (ASStackLayoutSpec, ASInsetLayoutSpec, etc.)
-- TextNode2 (modern text rendering, replaces legacy TextNode)
+### Option 3: Carthage
 
-**Optional Features (enable via traits):**
-- IGListKit integration (advanced collection views with modern Swift API)
+For teams using Carthage workflow.
 
-**⚠️ SPM Source Distribution Limitations:**
-Video/MapKit/Photos are NOT accessible from Swift in source distribution due to SPM module interface generation limitations.
+```
+github "3a4oT/Texture" ~> 4.0.0
+```
 
-**Note:** Photos IS available in binary distribution (see Option 1 above).
+Then:
+```bash
+carthage update --use-xcframeworks --platform iOS
+```
+
+---
+
+## What's Included
+
+### ✅ Available Features
+
+| Feature | SPM Source | SPM Binary | Carthage |
+|---------|-----------|-----------|----------|
+| **Core Nodes** | ✅ Static | ✅ Dynamic | ✅ Dynamic |
+| **Collections** | ✅ Static | ✅ Dynamic | ✅ Dynamic |
+| **Layout Specs** | ✅ Static | ✅ Dynamic | ✅ Dynamic |
+| **TextNode2** | ✅ Static | ✅ Dynamic | ✅ Dynamic |
+| **PINRemoteImage** | ✅ Static | ✅ Dynamic | ✅ Dynamic |
+| **IGListKit** | ✅ Swift API only* | ✅ ObjC API only** | ✅ ObjC API only** |
+| **Photos** | ❌ | ✅ Dynamic | ✅ Dynamic |
+
+\* SPM Source: Use `TextureIGListKitExtensions` module → `adapter.setCollectionNode(node)`  
+\*\* Binary/Carthage: Use native Objective-C API → `adapter.setASDKCollectionNode(node)`  
+⚠️ **API methods differ** - not drop-in replacements (see IGListKit Integration section)
+
+**Core Nodes:** ASDisplayNode, ASImageNode, ASTextNode2, ASButtonNode, ASControlNode, ASScrollNode, etc.
+
+**Collections:** ASCollectionNode, ASTableNode, ASPagerNode
+
+**Layout Specs:** ASStackLayoutSpec, ASInsetLayoutSpec, ASCenterLayoutSpec, ASRatioLayoutSpec, etc.
+
+### ❌ Not Included (By Design)
+
+| Feature | Reason | Alternative |
+|---------|--------|-------------|
+| **Video** (ASVideoNode) | Niche feature, heavy frameworks | Use [original repo](https://github.com/TextureGroup/Texture) |
+| **MapKit** (ASMapNode) | Niche feature, rarely used | Use [original repo](https://github.com/TextureGroup/Texture) |
+| **AssetsLibrary** | Deprecated iOS 9.0 | Use Photos framework |
+| **Old TextNode** | Legacy, slower | Use TextNode2 (included) |
+
+**Why not include Video/MapKit?**
+- Used by ~10-30% of apps
+- Require heavy system frameworks (AVFoundation, CoreMedia, MapKit)
+- Keeping the binary lightweight benefits the majority
+
+---
+
+## Photos Framework Support
+
+**SPM Source:** ❌ Not available due to Swift/Objective-C interop limitations
+**SPM Binary:** ✅ Available (Objective-C API only)
+**Carthage:** ✅ Available (full support)
+
+If you need Photos in SPM, use Binary distribution:
+
+```swift
+import AsyncDisplayKit
+import Photos
+
+// Works in Binary, not in Source
+let imageNode = ASMultiplexImageNode()
+imageNode.asset = PHAsset() // ✅ Binary ❌ Source
+```
 
 ---
 
 ## IGListKit Integration
 
-### Binary Distribution: Objective-C API
+IGListKit is **always required** in this fork.
 
+### ⚡ Quick Start
+
+**SPM Source Distribution (Swift only):**
 ```swift
-import IGListKit
+import TextureIGListKitExtensions  // Re-exports AsyncDisplayKit + IGListKit
+
+let adapter = ListAdapter(updater: ..., viewController: ...)
+let node = ASCollectionNode()
+adapter.setCollectionNode(node)  // ✅ Swift API (only option)
+```
+
+**SPM Binary / Carthage (Objective-C only):**
+```swift
 import AsyncDisplayKit
+import IGListKit
 
 let adapter = ListAdapter(updater: ..., viewController: ...)
 let node = ASCollectionNode()
-
-// Objective-C API (same as CocoaPods/Carthage)
-adapter.setASDKCollectionNode(node)
+adapter.setASDKCollectionNode(node)  // ✅ Objective-C API (only option)
 ```
 
-### Source Distribution: Modern Swift API
+**⚠️ Method names differ** - not drop-in replacements between Source and Binary/Carthage.
 
-```swift
-import TextureIGListKitExtensions  // Includes everything
+### 📋 API Availability
 
-let adapter = ListAdapter(updater: ..., viewController: ...)
-let node = ASCollectionNode()
+| API | SPM Source | SPM Binary | Carthage |
+|-----|------------|------------|----------|
+| `adapter.setASDKCollectionNode(node)` | ❌ | ✅ | ✅ |
+| `adapter.setCollectionNode(node)` via `TextureIGListKitExtensions` | ✅ Required | ❌ | ❌ |
 
-// Modern Swift API
-adapter.setCollectionNode(node)
-```
+**⚠️ Method names differ** - not drop-in replacements between distributions.
 
-Read more: [IGListKit Integration Guide](Sources/TextureIGListKitExtensions/README.md)
-
----
-
-## Migrating from CocoaPods
-
-**For detailed migration guide, see [Binary Distribution Guide](docs/BinaryDistribution.md#migration-guide)**
-
-Quick summary:
-- ✅ Core nodes - same API
-- ✅ Photos - available in **binary** distribution
-- ❌ Video/MapKit - use CocoaPods/Carthage from original repo
-- ⚠️ IGListKit - uses version 5.0+ (breaking changes from 4.x)
-
-### Note for Contributors
-
-When adding or removing source files, regenerate SPM layout:
-
-```bash
-swift scripts/generate_spm_sources_layout.swift
-git add spm/Sources
-git commit -m "Update SPM layout for new/removed files"
-```
-
----
-
-## Documentation
-
-### Fork-Specific Documentation
-
-- **[Binary Distribution Guide](docs/BinaryDistribution.md)** - Comprehensive guide on binary vs source, feature comparison, API differences
-- **[IGListKit Swift API](Sources/TextureIGListKitExtensions/README.md)** - Modern Swift API for IGListKit integration
-
-### Original Texture Documentation
-
-- **[Getting Started](http://texturegroup.org/docs/getting-started.html)** - Core concepts and basics
-- **[Layout Guide](http://texturegroup.org/docs/layout2-quickstart.html)** - Layout system documentation
-- **[Node Hierarchy](http://texturegroup.org/docs/node-overview.html)** - Understanding nodes
-- **[Original README](docs/ORIGINAL_README.md)** - Full original README preserved
-
----
-
-## What's Different From Original?
-
-### Added Features
-
-**Binary XCFramework Distribution:**
-- Pre-compiled binary
-- Automated GitHub Actions releases
-- Checksummed releases for SPM
-
-**Modern Swift API:**
-- `TextureIGListKitExtensions` module
-- Swift extension: `adapter.setCollectionNode(_:)`
-- Idiomatic Swift naming conventions
-
-**Build Optimizations:**
-- TextNode2 as default (old TextNode removed)
-
-**Developer Experience:**
-- Automated release workflow
-- Detailed binary distribution docs
-- Clear migration guides
-
-### What's Available
-
-**Core functionality in both binary and source:**
-- All standard nodes (ASDisplayNode, ASImageNode, ASTextNode2, etc.)
-- Collection views (ASCollectionNode, ASTableNode, ASPagerNode)
-- IGListKit integration (Objective-C API in binary, Swift API in source)
-- All layout specs
-- PINRemoteImage integration
-
-### Feature Comparison
-
-| Feature | Binary (SPM) | Source (SPM) | CocoaPods/Carthage |
-|---------|-------------|--------------|-------------------|
-| **Photos** | ✅ Included | ❌ Not available | ✅ Available |
-| **Video/MapKit** | ❌ Not included | ❌ Not available | ✅ Available |
-| **IGListKit** | Objective-C API | Swift API | Objective-C API |
-
-**For detailed comparison**, see [Binary Distribution Guide](docs/BinaryDistribution.md)
-
-### Future Directions
-
-We're exploring additional distribution options based on community demand:
-- **Additional binary variants** - `AsyncDisplayKitBinaryFull` with Video/MapKit for apps that need these features
-- **Swift wrapper modules** - TextureVideoExtensions, TextureMapKitExtensions to provide Swift API for conditional features
-
-**Why not include Video/MapKit by default?**
-These are niche features (~10-30% of apps) that require heavy frameworks (AVFoundation, CoreMedia, MapKit). Keeping the default binary lightweight benefits the majority of users.
-
----
-
-## Installation Options
-
-### Swift Package Manager (Recommended)
-
-**Binary (Fast):**
-```swift
-.package(url: "https://github.com/3a4oT/Texture", from: "3.2.8"),
-.product(name: "AsyncDisplayKitBinary", package: "Texture")
-```
-
-**Source (Same Features, Swift API):**
-```swift
-.package(url: "https://github.com/3a4oT/Texture", from: "3.2.8"),
-.product(name: "AsyncDisplayKit", package: "Texture")
-```
-
-**With Swift IGListKit API:**
-```swift
-.package(
-    url: "https://github.com/3a4oT/Texture",
-    from: "3.2.8",
-    traits: [.init(name: "IGListKit")]
-),
-.product(name: "AsyncDisplayKit", package: "Texture"),
-.product(name: "TextureIGListKitExtensions", package: "Texture")
-```
-
-### CocoaPods / Carthage
-
-For CocoaPods and Carthage, please use the [original repository](https://github.com/TextureGroup/Texture).
-
-**Note:** Photos is available in binary distribution. For Video/MapKit, use CocoaPods/Carthage from original repository.
+**📚 Detailed Documentation:**
+- [TextureIGListKitExtensions Module Documentation](Sources/TextureIGListKitExtensions/README.md)
+- [Binary Distribution Guide](docs/BinaryDistribution.md)
 
 ---
 
 ## Migration Guide
 
-### From Original Texture (SPM)
+### From Original Repository → This Fork
 
-**No changes needed!** This fork is backward compatible.
+**If you use Video/MapKit:** Stay with [original repository](https://github.com/TextureGroup/Texture).
 
-Source distribution uses the same API as the original.
+**If you don't need Video/MapKit:**
 
-### From CocoaPods/Carthage to This Fork
+1. Remove Podfile and `pod install` artifacts
+2. Add SPM dependency (see Quick Start)
+3. Update imports if needed
+4. ✅ Done - Same API
 
-**For Objective-C projects:**
-1. Switch to SPM binary distribution
-2. No code changes needed (same API)
+### From Original Texture (SPM) → This Fork
 
-**For Swift projects:**
-1. Choose binary (Objective-C API) or source (Swift API)
-2. If using source, update imports and API calls (see docs)
+**No changes needed!** This fork is backward compatible with the original SPM distribution.
 
-Read: [Binary Distribution Guide](docs/BinaryDistribution.md)
+### Binary vs Source?
+
+| Choose Binary if... | Choose Source if... |
+|-------------------|-------------------|
+| You want instant builds | You need to debug Texture code |
+| You use Photos framework | You don't need Photos |
+| You're building for production | You're actively developing |
+| You trust pre-compiled binaries | You prefer compiling yourself |
 
 ---
 
 ## Examples
 
-Check the `examples/` directory for sample projects:
+See `examples/` directory:
 
-- **SPMBasic** - Basic AsyncDisplayKit usage with SPM
-- **SPMWithIGListKit** - IGListKit integration examples
-- **ASIGListKitSPM** - Complete iOS app with IGListKit
+- **SPMBasic** - Basic usage with SPM
+- **SPMWithIGListKit** - IGListKit integration
+- **ASIGListKitSPM** - Complete iOS app
+
+**Note:** 21 example projects were removed from this fork to focus on SPM/Carthage. See [original repository](https://github.com/TextureGroup/Texture) for full examples.
+
+---
+
+## Comparison: This Fork vs Original
+
+| Feature | This Fork | Original |
+|---------|-----------|----------|
+| **Package Managers** | SPM + Carthage only | SPM + Carthage + CocoaPods |
+| **IGListKit** | ✅ Always required | ⚠️ Optional |
+| **SPM Source** | ✅ Static library | ✅ Static library |
+| **SPM Binary** | ✅ XCFramework | ❌ Not available |
+| **Carthage** | ✅ XCFramework | ✅ Dynamic framework |
+| **Photos (SPM Binary)** | ✅ Available | N/A |
+| **Photos (SPM Source)** | ❌ Not available | ❌ Not available |
+| **Video/MapKit** | ❌ Not included | ✅ Available |
+| **CI/CD** | SPM + Carthage | All package managers |
+
+**When to use original repository:**
+- You need the full original codebase
+- You need Video (ASVideoNode) or MapKit (ASMapNode)
+- You want to use AsyncDisplayKit WITHOUT IGListKit
+- You want the officially maintained version
+
+**When to use this fork:**
+- You use SPM or Carthage exclusively
+- You want pre-compiled binary (faster builds)
+- You're OK with IGListKit being always included
+- You don't need Video/MapKit
+- You prefer a streamlined SPM/Carthage-focused repository
+
+---
+
+## Documentation
+
+### Fork-Specific
+- [Binary Distribution Guide](docs/BinaryDistribution.md) - Detailed comparison
+- [IGListKit Swift API](Sources/TextureIGListKitExtensions/README.md) - Modern Swift extensions
+
+### Original Texture Docs
+- [Getting Started](http://texturegroup.org/docs/getting-started.html)
+- [Layout Guide](http://texturegroup.org/docs/layout2-quickstart.html)
+- [Node Hierarchy](http://texturegroup.org/docs/node-overview.html)
+- [Original README](docs/ORIGINAL_README.md)
 
 ---
 
 ## Contributing
 
-We welcome contributions to this fork!
+### To This Fork
 
-### Focus Areas for This Fork
+Welcome contributions for:
+- SPM/Carthage improvements
+- Binary distribution enhancements
+- Documentation
+- Bug fixes
 
-- Binary distribution improvements
-- Swift API enhancements
-- SPM-specific features
-- Documentation improvements
+### To Core Texture
 
-### For Core Texture Changes
+Please contribute to [upstream repository](https://github.com/TextureGroup/Texture).
 
-Please contribute to the [upstream repository](https://github.com/TextureGroup/Texture).
+We periodically sync with upstream for core improvements.
 
-We periodically sync with upstream to get core improvements.
+---
 
-### How to Contribute
+## Building XCFramework
 
-1. Fork this repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+For binary distribution:
+
+```bash
+./scripts/build_xcframework.sh
+```
+
+Creates `build/Texture.xcframework.zip` with checksum for SPM.
+
+See: [Binary Distribution Guide](docs/BinaryDistribution.md#building-xcframework)
 
 ---
 
 ## Releases
 
-This fork uses automated releases via GitHub Actions:
+Automated via GitHub Actions:
 
-1. Push a tag: `git tag 3.2.8 && git push origin 3.2.8`
+1. Push tag: `git tag 4.0.0 && git push origin 4.0.0`
 2. GitHub Actions builds XCFramework
-3. Creates release with binary artifact
-4. Generates checksum for SPM
+3. Creates release with binary
+4. Generates SPM checksum
 
-See: [Release Workflow](.github/workflows/release-xcframework.yml)
+See: [.github/workflows/release-xcframework.yml](.github/workflows/release-xcframework.yml)
 
 ---
 
 ## License
 
-Same as original: Apache License 2.0
+Apache License 2.0
 
 Copyright (c) Pinterest, Inc.
 Copyright (c) Facebook, Inc. and its affiliates.
@@ -358,12 +371,12 @@ See [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
-This fork is built on top of the excellent work by:
-- [Pinterest Engineering](https://github.com/pinterest) - Current maintainers
+Built on the excellent work by:
+- [Pinterest Engineering](https://github.com/pinterest) - Current maintainers of original repo
 - [Facebook](https://github.com/facebook) - Original creators
 - [TextureGroup Community](https://github.com/TextureGroup) - Contributors
 
-**Upstream repository:** [TextureGroup/Texture](https://github.com/TextureGroup/Texture)
+**Upstream:** [TextureGroup/Texture](https://github.com/TextureGroup/Texture)
 
 ---
 
@@ -372,8 +385,26 @@ This fork is built on top of the excellent work by:
 - **This Fork:** [github.com/3a4oT/Texture](https://github.com/3a4oT/Texture)
 - **Original Repo:** [github.com/TextureGroup/Texture](https://github.com/TextureGroup/Texture)
 - **Documentation:** [texturegroup.org](http://texturegroup.org)
-- **Binary Guide:** [docs/BinaryDistribution.md](docs/BinaryDistribution.md)
-- **Issues:** [Report issues specific to this fork](https://github.com/3a4oT/Texture/issues)
+- **Issues:** [Report fork-specific issues](https://github.com/3a4oT/Texture/issues)
+
+---
+
+## FAQ
+
+**Q: Why fork instead of contributing to original?**
+A: This fork has a different philosophy (SPM/Carthage-only, cleaner codebase). The original repository maintains broader compatibility and full feature set.
+
+**Q: Will you sync with upstream?**
+A: Yes, we periodically pull core Texture improvements from upstream.
+
+**Q: Can I use this in production?**
+A: Yes! The core Texture code is the same. Only the distribution method differs.
+
+**Q: What if I need Video/MapKit?**
+A: Use the [original repository](https://github.com/TextureGroup/Texture).
+
+**Q: Is this fork maintained?**
+A: Yes, by the community. For core Texture bugs, report to [upstream](https://github.com/TextureGroup/Texture).
 
 ---
 

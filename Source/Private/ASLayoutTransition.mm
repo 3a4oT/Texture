@@ -174,14 +174,15 @@ static inline BOOL ASLayoutCanTransitionAsynchronous(ASLayout *layout) {
       return a.second < b.second;
     });
 #else
+    // Fallback for SPM Source builds (uses NSArray+Diffing)
     NSIndexSet *insertions, *deletions;
     NSArray<NSIndexPath *> *moves;
     NSArray<ASDisplayNode *> *previousNodes = [previousLayout.sublayouts valueForKey:@"layoutElement"];
     NSArray<ASDisplayNode *> *pendingNodes = [pendingLayout.sublayouts valueForKey:@"layoutElement"];
     [previousNodes asdk_diffWithArray:pendingNodes
-                                       insertions:&insertions
-                                        deletions:&deletions
-                                            moves:&moves];
+                           insertions:&insertions
+                            deletions:&deletions
+                                moves:&moves];
 
     _insertedSubnodePositions = findNodesInLayoutAtIndexes(pendingLayout, insertions, &_insertedSubnodes);
     _removedSubnodes = [previousNodes objectsAtIndexes:deletions];

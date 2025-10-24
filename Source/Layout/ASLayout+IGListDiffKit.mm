@@ -6,7 +6,9 @@
 //  Licensed under Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
 //
 #import <AsyncDisplayKit/ASAvailability.h>
+
 #if AS_IG_LIST_DIFF_KIT
+
 #import "ASLayout+IGListDiffKit.h"
 
 @interface ASLayout() {
@@ -27,4 +29,5 @@
   return [self isEqual:other];
 }
 @end
+
 #endif // AS_IG_LIST_DIFF_KIT

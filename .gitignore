@@ -38,3 +38,9 @@ Package.resolved
 
 # AI Tools
 .claude/
+
+# Temporary folders (hidden during XCFramework build)
+.examples_hidden/
+.examples_extra_hidden/
+.smoke-tests_hidden/
+.SubspecWorkspaces_hidden/

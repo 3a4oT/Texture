@@ -10,8 +10,8 @@
 # - TextNode2 (modern text rendering)
 #
 # Disabled features (to reduce binary size):
-# - Video (ASVideoNode) - use CocoaPods/Carthage if needed
-# - MapKit (ASMapNode) - use CocoaPods/Carthage if needed
+# - Video (ASVideoNode) - use original repository if needed
+# - MapKit (ASMapNode) - use original repository if needed
 # - AssetsLibrary - deprecated in iOS 9.0
 # - Old TextNode - replaced by TextNode2
 #
@@ -30,6 +30,7 @@
 set -e
 set -o pipefail
 
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -47,6 +48,58 @@ ZIP_PATH="${BUILD_DIR}/${ZIP_NAME}"
 
 # Platforms to build (Carthage supports iOS, tvOS, macOS, watchOS)
 PLATFORMS="iOS,tvOS"
+
+# Folders to hide from Carthage (it scans all .xcodeproj files in repo)
+FOLDERS_TO_HIDE=("examples")
+FOLDERS_WERE_HIDDEN=()
+
+# Function to hide example folders from Carthage
+# Carthage scans all .xcodeproj files in the repository, which can cause issues
+# with SPM example projects that have different dependency configurations
+hide_extra_folders() {
+    echo -e "${YELLOW}Hiding non-essential folders from Carthage...${NC}"
+
+    for folder in "${FOLDERS_TO_HIDE[@]}"; do
+        if [ -d "$folder" ]; then
+            local hidden_name=".${folder}_hidden"
+            if [ ! -d "$hidden_name" ]; then
+                mv "$folder" "$hidden_name"
+                FOLDERS_WERE_HIDDEN+=("$folder")
+                echo -e "  ${GREEN}✓${NC} $folder → $hidden_name"
+            fi
+        fi
+    done
+
+    if [ ${#FOLDERS_WERE_HIDDEN[@]} -gt 0 ]; then
+        echo -e "${GREEN}✓ Folders hidden${NC}"
+    else
+        echo -e "${YELLOW}⚠ No folders to hide${NC}"
+    fi
+    echo ""
+}
+
+# Function to restore hidden folders
+restore_hidden_folders() {
+    if [ ${#FOLDERS_WERE_HIDDEN[@]} -gt 0 ]; then
+        echo ""
+        echo -e "${YELLOW}Restoring hidden folders...${NC}"
+
+        for folder in "${FOLDERS_WERE_HIDDEN[@]}"; do
+            local hidden_name=".${folder}_hidden"
+            if [ -d "$hidden_name" ]; then
+                mv "$hidden_name" "$folder"
+                echo -e "  ${GREEN}✓${NC} $hidden_name → $folder"
+            fi
+        done
+
+        FOLDERS_WERE_HIDDEN=()
+        echo -e "${GREEN}✓ Folders restored${NC}"
+        echo ""
+    fi
+}
+
+# Setup trap to restore folders on exit (success, failure, or interrupt)
+trap restore_hidden_folders EXIT INT TERM
 
 echo -e "${BLUE}================================================${NC}"
 echo -e "${BLUE}Building XCFramework for ${PRODUCT_NAME}${NC}"
@@ -72,6 +125,10 @@ mkdir -p "${BUILD_DIR}"
 
 echo -e "${GREEN}✓ Cleaned build directory${NC}"
 echo ""
+
+# Hide example folders from Carthage
+# Carthage scans all .xcodeproj files, including example projects with SPM configs
+hide_extra_folders
 
 # Update dependencies
 echo -e "${YELLOW}Resolving Carthage dependencies...${NC}"
@@ -101,7 +158,7 @@ echo -e "    - MapKit (ASMapNode) - niche, rarely used (~10% of apps)"
 echo -e "    - AssetsLibrary - deprecated iOS 9.0"
 echo -e "    - Old TextNode - legacy, slower than TextNode2"
 echo ""
-echo -e "${BLUE}Note: For Video/MapKit features, use CocoaPods/Carthage from original repository${NC}"
+echo -e "${BLUE}Note: For Video/MapKit features, use original repository${NC}"
 echo ""
 
 # Build with optimized settings
@@ -133,6 +190,20 @@ echo -e "${YELLOW}Copying XCFramework to build directory...${NC}"
 cp -R "${CARTHAGE_XCFRAMEWORK}" "${XCFRAMEWORK_PATH}"
 
 echo -e "${GREEN}✓ XCFramework copied to: ${XCFRAMEWORK_PATH}${NC}"
+echo ""
+
+# Remove private IGListDiffKit headers that cause SPM integration issues
+# ASLayout+IGListDiffKit.h is marked as Private but Carthage includes it anyway
+# It imports IGListDiffKit which causes "file not found" errors in Clang scanner
+# The functionality is still available in the binary, only the header is removed
+echo -e "${YELLOW}Removing problematic private headers from XCFramework...${NC}"
+find "${XCFRAMEWORK_PATH}" -name "ASLayout+IGListDiffKit.h" -type f -exec rm -f {} \;
+REMAINING=$(find "${XCFRAMEWORK_PATH}" -name "ASLayout+IGListDiffKit.h" -type f | wc -l)
+if [ "$REMAINING" -eq 0 ]; then
+    echo -e "${GREEN}✓ Removed ASLayout+IGListDiffKit.h from all architectures${NC}"
+else
+    echo -e "${RED}⚠ Warning: Some headers were not removed${NC}"
+fi
 echo ""
 
 # Verify XCFramework structure
@@ -209,7 +280,7 @@ echo -e "  - PINRemoteImage integration"
 echo -e "  - IGListKit integration (Objective-C API)"
 echo -e "  - TextNode2 (modern text rendering)"
 echo ""
-echo -e "${YELLOW}Disabled Features (use CocoaPods/Carthage if needed):${NC}"
+echo -e "${YELLOW}Disabled Features (use original repository if needed):${NC}"
 echo -e "  - Video (ASVideoNode) - niche, requires AVFoundation + CoreMedia"
 echo -e "  - MapKit (ASMapNode) - only ~10% of apps need maps"
 echo -e "  - AssetsLibrary - deprecated in iOS 9.0"

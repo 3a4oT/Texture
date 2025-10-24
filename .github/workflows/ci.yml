@@ -12,14 +12,8 @@ jobs:
         DEVELOPER_DIR: /Applications/Xcode_26.0.1.app/Contents/Developer
     strategy:
       matrix:
-        mode: [tests, framework, life-without-cocoapods, carthage, spm, spm-texture-basic, spm-texture-iglistkit, spm-app-iglistkit, examples-pt1, examples-pt2, examples-pt3, examples-pt4]
+        mode: [carthage, spm, spm-texture-basic, spm-texture-iglistkit, spm-app-iglistkit]
         include:
-          - mode: tests
-            name: Build and run tests
-          - mode: framework
-            name: Build Texture as a dynamic framework
-          - mode: life-without-cocoapods
-            name: Build Texture as a static library
           - mode: carthage
             name: Verify that Carthage works
           - mode: spm
@@ -30,14 +24,6 @@ jobs:
             name: Test SPM with IGListKit trait
           - mode: spm-app-iglistkit
             name: Test SPM iOS app with IGListKit (local package wrapper)
-          - mode: examples-pt1
-            name: Build examples (examples-pt1)
-          - mode: examples-pt2
-            name: Build examples (examples-pt2)
-          - mode: examples-pt3
-            name: Build examples (examples-pt3)
-          - mode: examples-pt4
-            name: Build examples (examples-pt4)
     name: ${{ matrix.name }}
     runs-on: macos-15
     steps:

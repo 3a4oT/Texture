@@ -41,7 +41,7 @@ Texture provides two distribution methods via Swift Package Manager:
 **Why?** These Objective-C classes are wrapped in `#if` preprocessor directives which prevents Swift Package Manager from exporting them in the module interface. Binary distribution can include them because it's pre-compiled.
 
 **If you need Video/MapKit:**
-- Use CocoaPods or Carthage (original repository)
+- Use original repository (https://github.com/TextureGroup/Texture)
 
 ---
 
@@ -49,8 +49,8 @@ Texture provides two distribution methods via Swift Package Manager:
 
 ### Quick Comparison Table
 
-| Feature | Binary Distribution | Source Distribution | CocoaPods/Carthage |
-|---------|-------------------|---------------------|-------------------|
+| Feature | Binary Distribution | Source Distribution | Carthage (this fork) |
+|---------|-------------------|---------------------|---------------------|
 | **Build Speed** | Pre-compiled | Compiles from source | Compiles from source |
 | **Core Nodes** | ✅ All included | ✅ All included | ✅ All included |
 | **Photos (ASMultiplexImageNode)** | ✅ **Included** | ❌ Not available (SPM limitation) | ✅ Available |
@@ -99,13 +99,13 @@ The binary includes core Texture functionality:
 - ❌ Not included in binary (niche feature)
 - Heavy frameworks required (AVFoundation, CoreMedia)
 - Adds significant binary size
-- **Migration path:** Use CocoaPods/Carthage from original repository
+- **Migration path:** Use original repository
 
 **ASMapNode (MapKit Integration):**
 - ❌ Not included in binary (rarely used)
 - Only ~10% of apps need maps
 - Requires MapKit + CoreLocation frameworks
-- **Migration path:** Use CocoaPods/Carthage from original repository
+- **Migration path:** Use original repository
 
 **AssetsLibrary:**
 - ❌ Deprecated in iOS 9.0 (2015)
@@ -124,131 +124,87 @@ The binary includes core Texture functionality:
 - Wrapped in `#if AS_USE_PHOTOS` preprocessor directive
 - Classes not exported in Swift module interface
 - ✅ **Available in binary distribution** (pre-compiled Objective-C)
-- **Migration path:** Use binary distribution or CocoaPods/Carthage
+- **Migration path:** Use binary distribution or original repository
 
 **Video/MapKit:**
 - ❌ Not available in source distribution (SPM limitation)
 - ❌ Not included in binary (niche features)
-- **Migration path:** Use CocoaPods/Carthage from original repository
+- **Migration path:** Use original repository
 
 **TextureIGListKitExtensions (Swift API):**
-- ✅ Available in source distribution only
+- ✅ Available in all distributions (SPM Source, SPM Binary, Carthage)
 - Modern Swift API for IGListKit
-- **Binary uses:** Objective-C API (`setASDKCollectionNode:`)
+- **Required** for SPM Source, **optional** for Binary/Carthage
 
 ---
 
 ## IGListKit Integration Differences
 
-### CRITICAL: Binary vs Source Use Different APIs
+### CRITICAL: API Method Names Differ
 
-This is the most important difference between binary and source distribution.
+**⚠️ Not Drop-In Replacements:** Method names differ between Objective-C and Swift APIs, though functionality is identical.
 
-### Binary Distribution: Objective-C API Only
-
-**What you get:**
-- `IGListAdapter+AsyncDisplayKit` category (Objective-C)
-- Method: `-[IGListAdapter setASDKCollectionNode:]`
-- Implementation: `ASIGListAdapterBasedDataSource` (Objective-C)
-- Based on original Facebook/Pinterest Objective-C code
-
-**Usage (Objective-C):**
-```objc
-@import IGListKit;
-@import AsyncDisplayKit;
-
-IGListAdapter *adapter = [[IGListAdapter alloc] initWithUpdater:...
-                                                 viewController:...];
-ASCollectionNode *node = [[ASCollectionNode alloc] init];
-
-// Binary distribution uses Objective-C API
-[adapter setASDKCollectionNode:node];
-```
-
-**Usage (Swift with binary):**
-```swift
-import IGListKit
-import AsyncDisplayKit
-
-let adapter = ListAdapter(updater: ..., viewController: ...)
-let node = ASCollectionNode()
-
-// Must use Objective-C selector from Swift
-adapter.setASDKCollectionNode(node)
-```
-
-**Limitations:**
-- Objective-C naming convention (ASDK prefix)
-- No Swift-specific features
-- No modern Swift concurrency annotations
-- Same as CocoaPods/Carthage builds
-
-### Source Distribution: Modern Swift API
+### SPM Source Distribution: Swift API Only
 
 **What you get:**
 - `TextureIGListKitExtensions` module (pure Swift)
-- Method: `ListAdapter.setCollectionNode(_:)` (Swift extension)
-- Implementation: Swift bridge to Objective-C internals
-- Modern, idiomatic Swift API
+- Method: `adapter.setCollectionNode(_:)`
+- Implementation: Swift reimplementation of Objective-C logic
+- **Why:** SPM cannot export Objective-C categories on classes from other modules
 
-**Usage (Swift with source):**
+**Usage:**
 ```swift
-import TextureIGListKitExtensions
-// This single import provides:
-//   - AsyncDisplayKit APIs
-//   - IGListKit APIs
-//   - IGListDiffKit APIs
-//   - Swift extension method
+import TextureIGListKitExtensions  // Re-exports AsyncDisplayKit + IGListKit
+
+let adapter = ListAdapter(updater: ListAdapterUpdater(), viewController: self)
+let node = ASCollectionNode(collectionViewLayout: UICollectionViewFlowLayout())
+
+// Swift API (required for SPM Source)
+adapter.setCollectionNode(node)
+```
+
+### SPM Binary / Carthage: Both APIs Available
+
+**What you get:**
+- `IGListAdapter+AsyncDisplayKit` category (Objective-C)
+- Method: `adapter.setASDKCollectionNode(_:)` (Objective-C)
+- **PLUS** optionally: `adapter.setCollectionNode(_:)` (Swift via TextureIGListKitExtensions)
+
+**Option 1 - Objective-C API:**
+```swift
+import AsyncDisplayKit
+import IGListKit
 
 let adapter = ListAdapter(updater: ..., viewController: ...)
 let node = ASCollectionNode()
 
-// Source distribution uses Swift API
+// Objective-C API (Binary/Carthage)
+adapter.setASDKCollectionNode(node)
+```
+
+**Option 2 - Swift API:**
+```swift
+import TextureIGListKitExtensions
+
+let adapter = ListAdapter(updater: ..., viewController: ...)
+let node = ASCollectionNode()
+
+// Swift API (works in Binary too)
 adapter.setCollectionNode(node)
 ```
 
-**Advantages:**
-- Idiomatic Swift naming (no ASDK prefix)
-- Single import for all modules
-- Future Swift concurrency support
-- Better type safety
+**Recommendation:** Use Swift API (`TextureIGListKitExtensions`) for consistency across all build types.
 
-**Usage (Objective-C with source):**
-```objc
-// TextureIGListKitExtensions is Swift-only
-// Use the original Objective-C API:
-@import IGListKit;
-@import AsyncDisplayKit;
+### Why API Differs
 
-[adapter setASDKCollectionNode:node];
-```
+SPM cannot export Objective-C categories on classes from other modules:
+- `IGListAdapter` (from `IGListKit` module) cannot have category in `AsyncDisplayKit` module
+- **SPM Source:** Must use Swift wrapper (`TextureIGListKitExtensions`)
+- **Binary/Carthage:** Pre-compiled framework includes Objective-C API
 
-### Why This Difference Exists
+**📚 Technical details:** See sections below
 
-**Technical Reason:**
-
-Binary XCFrameworks are pre-compiled and cannot include:
-- Swift-only modules (TextureIGListKitExtensions)
-- SPM trait-conditional Swift code
-- Swift evolution features
-
-Source distribution can:
-- Compile Swift code at build time
-- Use SPM traits to conditionally include Swift modules
-- Provide modern Swift APIs
-
-**Design Decision:**
-
-Binary includes the **core Objective-C implementation** that works everywhere:
-- CocoaPods users: same API
-- Carthage users: same API
-- Binary SPM users: same API
-
-Source distribution adds **optional Swift sugar** on top:
-- Source SPM users: modern Swift API
-- But Objective-C API still available
-
-### Migration Guide: Binary → Source for Swift API
+### Quick Migration Guide
 
 If you want the modern Swift API:
 
@@ -258,8 +214,8 @@ If you want the modern Swift API:
 .product(name: "AsyncDisplayKitBinary", package: "Texture")
 
 // To:
-.product(name: "AsyncDisplayKitSource", package: "Texture", traits: [.init(name: "IGListKit")])
-.product(name: "TextureIGListKitExtensions", package: "Texture")
+.product(name: "AsyncDisplayKit", package: "Texture")
+.product(name: "TextureIGListKitExtensions", package: "Texture")  // Optional Swift API
 ```
 
 2. **Update imports:**
@@ -281,40 +237,17 @@ adapter.setASDKCollectionNode(node)
 adapter.setCollectionNode(node)
 ```
 
-### Comparison Table
+**📚 Complete Documentation:**
+- [TextureIGListKitExtensions Module Documentation](../Sources/TextureIGListKitExtensions/README.md)
 
-| Aspect | Binary (Objective-C API) | Source (Swift API) |
-|--------|-------------------------|-------------------|
-| **API Method** | `setASDKCollectionNode:` | `setCollectionNode(_:)` |
-| **Language** | Objective-C | Swift |
-| **Module** | `IGListAdapter+AsyncDisplayKit` | `TextureIGListKitExtensions` |
-| **Import** | `@import IGListKit` + `@import AsyncDisplayKit` | `import TextureIGListKitExtensions` |
-| **Naming** | ASDK prefix | Swift naming conventions |
-| **CocoaPods Compatible** | Yes (same API) | No (SPM only) |
-| **Carthage Compatible** | Yes (same API) | No (SPM only) |
-| **Swift Concurrency** | No | Future support |
-| **Type Safety** | Objective-C | Swift |
+### Distribution Decision Guide
 
-### Which Should You Use?
-
-**Use Binary Distribution if:**
-- You want fastest builds (instant)
-- You need Photos framework (ASMultiplexImageNode with PHAsset)
-- You have an Objective-C codebase
-- You're migrating from CocoaPods/Carthage
-- You don't need Video/MapKit features
-
-**Use Source Distribution if:**
-- You have a Swift codebase
-- You want modern Swift APIs for IGListKit
-- You prefer idiomatic Swift naming
-- You don't need Photos/Video/MapKit features
-
-**Use CocoaPods or Carthage (original repository) if:**
-- You need Video (ASVideoNode) features
-- You need MapKit (ASMapNode) features
-- You need Photos framework from Swift source code
-- You're okay with longer build times
+| Use This | If You Want |
+|----------|-------------|
+| **SPM Binary** | Objective-C API, fastest builds, Photos framework |
+| **SPM Source** | Swift API, no Photos needed |
+| **Carthage** | Build from source, Objective-C API |
+| **Original Repo** | Video/MapKit features |
 
 ---
 
@@ -326,7 +259,7 @@ adapter.setCollectionNode(node)
 
 1. In Xcode: **File → Add Package Dependencies**
 2. Enter URL: `https://github.com/3a4oT/Texture`
-3. Select version: `3.2.8` or later
+3. Select version: `4.0.0` or later
 4. Add product: **AsyncDisplayKitBinary**
 
 **That's it!** SPM automatically links all required frameworks and dependencies:
@@ -341,7 +274,7 @@ For library targets, you must manually specify linkerSettings:
 
 ```swift
 dependencies: [
-    .package(url: "https://github.com/3a4oT/Texture", from: "3.2.8")
+    .package(url: "https://github.com/3a4oT/Texture", from: "4.0.0")
 ],
 targets: [
     .target(
@@ -374,8 +307,7 @@ adapter.setASDKCollectionNode(node)
 dependencies: [
     .package(
         url: "https://github.com/TextureGroup/Texture",
-        from: "3.2.8",
-        traits: [.init(name: "IGListKit")]  // Enable IGListKit trait
+        from: "4.0.0"
     )
 ],
 targets: [
@@ -383,7 +315,7 @@ targets: [
         name: "YourTarget",
         dependencies: [
             .product(name: "AsyncDisplayKit", package: "Texture"),
-            .product(name: "TextureIGListKitExtensions", package: "Texture")
+            .product(name: "TextureIGListKitExtensions", package: "Texture")  // Optional Swift API
         ]
     )
 ]
@@ -393,8 +325,13 @@ targets: [
 ```swift
 import TextureIGListKitExtensions
 
-// Use Swift API
+// Use modern Swift API
 adapter.setCollectionNode(node)
+
+// Or use Objective-C API directly
+import AsyncDisplayKit
+import IGListKit
+adapter.setASDKCollectionNode(node)
 ```
 
 ---
@@ -432,7 +369,7 @@ linkerSettings: [
 // .linkedFramework("CoreLocation")   // MapKit not in binary
 // .linkedFramework("AssetsLibrary")  // Deprecated iOS 9.0
 
-// To use Video/MapKit, use CocoaPods or Carthage (original repository)
+// To use Video/MapKit, use original repository
 ```
 
 ---
@@ -629,17 +566,32 @@ This allows project.pbxproj preprocessor definitions to override the default `__
 
 ### Why is IGListKit API different in binary vs source?
 
-Binary XCFrameworks cannot include Swift-only modules. Binary includes the core Objective-C implementation (`setASDKCollectionNode:`), while source distribution adds optional Swift sugar (`setCollectionNode(_:)`).
+**SPM Technical Limitation:** Swift Package Manager cannot export Objective-C categories on classes from other modules. 
 
-Both APIs use the same underlying implementation - only the Swift wrapper is different.
+- **SPM Source:** Cannot compile `setASDKCollectionNode:` (Objective-C category on `IGListAdapter` from `IGListKit` module)
+- **SPM Binary:** Pre-compiled framework includes all Objective-C symbols
+- **Solution:** `TextureIGListKitExtensions` provides Swift reimplementation that works everywhere
+
+Both implementations use identical logic, only method names differ:
+- Objective-C: `setASDKCollectionNode:`
+- Swift: `setCollectionNode(_:)`
 
 ### Can I use the Swift API with binary distribution?
 
-No. The Swift API (`TextureIGListKitExtensions`) requires source compilation. Use source distribution if you want modern Swift APIs.
+**No.** `TextureIGListKitExtensions` is a **separate Swift module** that requires source compilation.
 
-### Will my CocoaPods/Carthage code work with binary?
+**Availability:**
+- ✅ SPM Source distribution (required - only option)
+- ❌ SPM Binary distribution (not included - use Objective-C API instead)
+- ❌ Carthage (not included - use Objective-C API instead)
 
-Yes! Binary uses the same Objective-C API as CocoaPods/Carthage (`setASDKCollectionNode:`). It's a drop-in replacement.
+**To use Swift API:** Switch to source distribution or add `TextureIGListKitExtensions` as separate dependency.
+
+### Will my Carthage code work with SPM binary?
+
+**Yes!** SPM Binary uses the same Objective-C API as Carthage (`setASDKCollectionNode:`). 
+
+**However:** If migrating from SPM Source, method names differ (see "IGListKit Integration Differences" section above).
 
 ### Why are Video/MapKit/Photos not available in SPM source distribution?
 
@@ -650,16 +602,16 @@ These Objective-C classes are wrapped in conditional compilation directives (`#i
 **Photos availability:**
 - ✅ Binary: Included (pre-compiled Objective-C with AS_USE_PHOTOS=1)
 - ❌ Source: Not available from Swift (SPM module interface limitation)
-- ✅ CocoaPods/Carthage: Available
+- ✅ Carthage: Available
 
 **Video/MapKit availability:**
 - ❌ Binary: Not included (niche features)
 - ❌ Source: Not available from Swift (SPM module interface limitation)
-- ✅ CocoaPods/Carthage: Available
+- ✅ Carthage: Available
 
 ### What about AssetsLibrary?
 
-Deprecated in iOS 9.0 (2015). Not available via SPM. Use Photos framework via CocoaPods/Carthage instead.
+Deprecated in iOS 9.0 (2015). Not available via SPM. Use Photos framework instead (available in binary).
 
 Note: Photos framework also has SPM limitations (see above).
 
@@ -693,7 +645,7 @@ We're considering additional binary distributions based on community demand:
 **Usage (proposed):**
 ```swift
 dependencies: [
-    .package(url: "https://github.com/3a4oT/Texture", from: "3.2.8")
+    .package(url: "https://github.com/3a4oT/Texture", from: "4.0.0")
 ],
 targets: [
     .target(
@@ -722,7 +674,7 @@ targets: [
 
 **Decision criteria:**
 - Community demand (GitHub issues, discussions)
-- Usage statistics from CocoaPods/Carthage
+- Usage statistics from community
 - Maintenance burden
 
 ### Swift Wrapper Modules

@@ -3,11 +3,12 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 70;
+	objectVersion = 60;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0A31690D2EA51D4600F5DB16 /* UICoreKit in Frameworks */ = {isa = PBXBuildFile; productRef = 0A31690C2EA51D4600F5DB16 /* UICoreKit */; };
+		0AAE889D2EAC12800098A275 /* AsyncDisplayKit in Frameworks */ = {isa = PBXBuildFile; productRef = 0AAE889C2EAC12800098A275 /* AsyncDisplayKit */; };
+		0AAE88A12EAC12800098A275 /* TextureIGListKitExtensions in Frameworks */ = {isa = PBXBuildFile; productRef = 0AAE88A02EAC12800098A275 /* TextureIGListKitExtensions */; };
 		FB32E77F25768F45000C4F42 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB32E77E25768F45000C4F42 /* AppDelegate.swift */; };
 		FB32E78125768F45000C4F42 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB32E78025768F45000C4F42 /* SceneDelegate.swift */; };
 		FB32E78325768F45000C4F42 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB32E78225768F45000C4F42 /* ViewController.swift */; };
@@ -388,28 +389,13 @@
 		FB3894B4257705EF0025252E /* Item.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Item.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		0A316B682EA51EBA00F5DB16 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Package.swift,
-				Sources/UICoreKit/UICoreKit.swift,
-				Tests/UICoreKitTests/UICoreKitTests.swift,
-			);
-			target = FB32E77A25768F45000C4F42 /* ASIGListKitSPM */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
-/* Begin PBXFileSystemSynchronizedRootGroup section */
-		0AB6754A2EA439C1003D806F /* UICoreKit */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (0A316B682EA51EBA00F5DB16 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = UICoreKit; sourceTree = "<group>"; };
-/* End PBXFileSystemSynchronizedRootGroup section */
-
 /* Begin PBXFrameworksBuildPhase section */
 		FB32E77825768F45000C4F42 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0A31690D2EA51D4600F5DB16 /* UICoreKit in Frameworks */,
+				0AAE889D2EAC12800098A275 /* AsyncDisplayKit in Frameworks */,
+				0AAE88A12EAC12800098A275 /* TextureIGListKitExtensions in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -582,7 +568,6 @@
 		FB32E77D25768F45000C4F42 /* ASIGListKitSPM */ = {
 			isa = PBXGroup;
 			children = (
-				0AB6754A2EA439C1003D806F /* UICoreKit */,
 				FB3894AE2577054F0025252E /* Extensions */,
 				FB3894AD2577053C0025252E /* Models */,
 				FB3894A9257704EF0025252E /* Section Controllers */,
@@ -644,12 +629,10 @@
 			);
 			dependencies = (
 			);
-			fileSystemSynchronizedGroups = (
-				0AB6754A2EA439C1003D806F /* UICoreKit */,
-			);
 			name = ASIGListKitSPM;
 			packageProductDependencies = (
-				0A31690C2EA51D4600F5DB16 /* UICoreKit */,
+				0AAE889C2EAC12800098A275 /* AsyncDisplayKit */,
+				0AAE88A02EAC12800098A275 /* TextureIGListKitExtensions */,
 			);
 			productName = ASIGListKitSPM;
 			productReference = FB32E77B25768F45000C4F42 /* ASIGListKitSPM.app */;
@@ -679,7 +662,7 @@
 			);
 			mainGroup = FB32E77225768F45000C4F42;
 			packageReferences = (
-				0A31690B2EA51D4600F5DB16 /* XCLocalSwiftPackageReference "ASIGListKitSPM/UICoreKit" */,
+				0AAE889B2EAC12800098A275 /* XCLocalSwiftPackageReference "../../../Texture" */,
 			);
 			productRefGroup = FB32E77C25768F45000C4F42 /* Products */;
 			projectDirPath = "";
@@ -1313,16 +1296,20 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		0A31690B2EA51D4600F5DB16 /* XCLocalSwiftPackageReference "ASIGListKitSPM/UICoreKit" */ = {
+		0AAE889B2EAC12800098A275 /* XCLocalSwiftPackageReference "../../../Texture" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = ASIGListKitSPM/UICoreKit;
+			relativePath = ../../../Texture;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		0A31690C2EA51D4600F5DB16 /* UICoreKit */ = {
+		0AAE889C2EAC12800098A275 /* AsyncDisplayKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			productName = UICoreKit;
+			productName = AsyncDisplayKit;
+		};
+		0AAE88A02EAC12800098A275 /* TextureIGListKitExtensions */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TextureIGListKitExtensions;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

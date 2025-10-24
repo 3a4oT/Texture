@@ -7,37 +7,31 @@ import PackageDescription
 //
 // This package supports both binary (precompiled XCFramework) and source distribution:
 //
-// Binary Distribution (faster builds):
-//   - Product: "AsyncDisplayKitBinary" (when available)
+// Binary Distribution:
+//   - Product: "AsyncDisplayKitBinary"
 //   - Includes: Core AsyncDisplayKit, PINRemoteImage, TextNode2, IGListKit (Objective-C API)
-//   - Best for: Production apps, faster CI builds
-//   - Build time: Instant (pre-compiled)
+//   - IGListKit: ✅ Native Objective-C API (adapter.setASDKCollectionNode)
+//   - Best for: Production apps, faster builds (pre-compiled)
 //
-// Source Distribution (customizable):
+// Source Distribution:
 //   - Product: "AsyncDisplayKit" (default)
-//   - Includes: Same as binary + optional IGListKit trait (Swift API)
+//   - Includes: Core AsyncDisplayKit, PINRemoteImage, TextNode2
+//   - IGListKit: ❌ Objective-C API not available (use TextureIGListKitExtensions instead)
 //   - Best for: Development, debugging, custom configurations
-//   - Build time: 2-5 minutes
 //
-// ⚠️ SPM Limitations (both binary and source):
-// Video (ASVideoNode), MapKit (ASMapNode), and Photos features are NOT available from Swift
-// due to SPM limitations with conditionally compiled Objective-C classes (#if AS_USE_VIDEO).
-// These features remain available via CocoaPods and Carthage, or from Objective-C code (.m files).
+// ⚠️ IGListKit API Differences:
 //
-// Note: Binary targets are currently commented out until first release is published.
-// Uncomment and update the URL/checksum after creating a GitHub release.
+// SPM Source:         adapter.setCollectionNode(node)     // Swift API (TextureIGListKitExtensions)
+// SPM Binary/Carthage: adapter.setASDKCollectionNode(node) // Objective-C API
+//
+// ⚠️ Method names differ - not drop-in replacements!
+// See Sources/TextureIGListKitExtensions/README.md for API mapping.
+//
+// ⚠️ Other SPM Limitations:
+// Video/MapKit/Photos features not available from Swift in Source distribution.
+// Available in Binary distribution and Carthage (pre-compiled frameworks).
 
-// AsyncDisplayKit dependencies
-let igListKitDep: Target.Dependency = .product(
-    name: "IGListKit",
-    package: "IGListKit",
-    condition: .when(traits: ["IGListKit"])
-)
-let igListDiffKitDep: Target.Dependency = .product(
-    name: "IGListDiffKit",
-    package: "IGListKit",
-    condition: .when(traits: ["IGListKit"])
-)
+// AsyncDisplayKit dependencies - IGListKit is always required
 
 let package = Package(
     name: "Texture",
@@ -64,10 +58,6 @@ let package = Package(
             targets: ["TextureIGListKitExtensions"]
         )
     ],
-    traits: [
-        // Optional traits
-        .init(name: "IGListKit", description: "IGListKit integration for advanced collection view support")
-    ],
     dependencies: [
         .package(url: "https://github.com/pinterest/PINRemoteImage.git", from: "3.0.4"),
         .package(url: "https://github.com/Instagram/IGListKit", from: "5.0.0")
@@ -77,21 +67,22 @@ let package = Package(
             name: "AsyncDisplayKit",
             dependencies: [
                 "PINRemoteImage",
-                igListKitDep,
-                igListDiffKitDep
+                .product(name: "IGListKit", package: "IGListKit"),
+                .product(name: "IGListDiffKit", package: "IGListKit")
             ],
             path: "spm/Sources/AsyncDisplayKit",
             publicHeadersPath: "include",
             cSettings: [
                 // Always available features
                 .define("AS_PIN_REMOTE_IMAGE", to: "1"),
+                
+                // IGListKit: Disabled for SPM Source (use TextureIGListKitExtensions instead)
+                // Enabled for Binary/Carthage builds (native Objective-C API)
+                .define("AS_IG_LIST_KIT", to: "0"),
+                .define("AS_IG_LIST_DIFF_KIT", to: "0"),
 
                 // Disable old TextNode by default for SPM
                 .define("AS_ENABLE_TEXTNODE", to: "0"),
-
-                // Trait-based conditional defines
-                .define("AS_IG_LIST_KIT", to: "1", .when(traits: ["IGListKit"])),
-                .define("AS_IG_LIST_DIFF_KIT", to: "1", .when(traits: ["IGListKit"])),
 
                 // Disabled features
                 .define("AS_USE_VIDEO", to: "0"),           // Not accessible from Swift via SPM
@@ -145,7 +136,7 @@ let package = Package(
             name: "TextureIGListKitExtensions",
             dependencies: [
                 "AsyncDisplayKit",
-                igListKitDep
+                .product(name: "IGListKit", package: "IGListKit")
             ],
             path: "Sources/TextureIGListKitExtensions",
             swiftSettings: [
@@ -166,8 +157,8 @@ let package = Package(
         // Binary target - precompiled XCFramework
         .binaryTarget(
             name: "AsyncDisplayKitBinary",
-            url: "https://github.com/3a4oT/Texture/releases/download/3.2.7/Texture.xcframework.zip",
-            checksum: "4b79b7816fb04082506d0fdf96ce40513b70c36cc83991b0d01fbbfb5e31b8d8"
+            url: "https://github.com/3a4oT/Texture/releases/download/4.0.0/Texture.xcframework.zip",
+            checksum: "cb4185c9863bd65f77496ea03122ba933907988c51e5e60c8ad557f26046364c"
         ),
 
         // Wrapper target - links binary with SPM dependencies

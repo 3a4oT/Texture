@@ -78,4 +78,26 @@ struct IGListKitTraitTests {
         #expect(result.deletes.contains(0))
         #expect(result.inserts.contains(2))
     }
+
+    // Note: setASDKCollectionNode is only available in Binary distribution (Carthage build)
+    // For SPM Source builds, use adapter.setCollectionNode() from TextureIGListKitExtensions
+    // This test verifies that TextureIGListKitExtensions provides the wrapper
+    @Test("Objective-C compatible API is accessible through TextureIGListKitExtensions")
+    @MainActor
+    func objcAPIWrapperAvailable() {
+        // SPM Source: uses setCollectionNode() from TextureIGListKitExtensions
+        // SPM Binary/Carthage: can use setASDKCollectionNode() directly from AsyncDisplayKit
+        
+        let adapter = ListAdapter(updater: ListAdapterUpdater(), viewController: nil)
+        let layout = UICollectionViewFlowLayout()
+        let collectionNode = ASCollectionNode(collectionViewLayout: layout)
+        
+        // Force the node to load by accessing its view
+        _ = collectionNode.view
+        
+        // Use the Swift API (works in both SPM Source and Binary)
+        adapter.setCollectionNode(collectionNode)
+        
+        #expect(adapter.collectionView != nil)
+    }
 }

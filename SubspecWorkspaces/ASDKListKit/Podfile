@@ -1,9 +1,0 @@
-source 'https://cdn.cocoapods.org/'
-
-platform :ios, '14.0'
-target 'ASDKListKitTests' do
-  pod 'Texture/IGListKit', :path => '../..'
-  pod 'OCMock', '~> 3.9'
-  pod 'JGMethodSwizzler', :git => 'https://github.com/JonasGessner/JGMethodSwizzler', :branch => 'master'
-end
-

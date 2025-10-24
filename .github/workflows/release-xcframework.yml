@@ -74,21 +74,20 @@ jobs:
 
           ### Included Features
           - ✅ Core AsyncDisplayKit (all nodes, layout specs, TextNode2)
-          - ✅ Photos framework (ASMultiplexImageNode with PHAsset support)
           - ✅ PINRemoteImage integration (image downloading/caching)
-          - ✅ IGListKit integration (Objective-C API)
+          - ✅ IGListKit integration (Objective-C API accessible from Swift)
+          - ✅ Photos framework (ASMultiplexImageNode with PHAsset support)
 
-          ### Not Included (use CocoaPods/Carthage if needed)
-          - ❌ Video support (ASVideoNode) - niche feature, heavy frameworks
-          - ❌ MapKit integration (ASMapNode) - rarely used
-          - ❌ AssetsLibrary - deprecated iOS 9.0
+          ### Not Included
+          - ❌ Video support (ASVideoNode) - use [original repo](https://github.com/TextureGroup/Texture) with CocoaPods if needed
+          - ❌ MapKit integration (ASMapNode) - use [original repo](https://github.com/TextureGroup/Texture) with CocoaPods if needed
 
           ### Usage
 
           #### Swift Package Manager (Binary - Fast)
           \`\`\`swift
           dependencies: [
-              .package(url: "https://github.com/TextureGroup/Texture", from: "${{ steps.get_version.outputs.version }}")
+              .package(url: "https://github.com/3a4oT/Texture", from: "${{ steps.get_version.outputs.version }}")
           ],
           targets: [
               .target(
@@ -103,7 +102,8 @@ jobs:
           #### Swift Package Manager (Source - Customizable)
           \`\`\`swift
           dependencies: [
-              .product(name: "AsyncDisplayKitSource", package: "Texture")
+              .package(url: "https://github.com/3a4oT/Texture", from: "${{ steps.get_version.outputs.version }}"),
+              .product(name: "AsyncDisplayKit", package: "Texture")
           ]
           \`\`\`
 
@@ -119,7 +119,7 @@ jobs:
           \`\`\`swift
           .binaryTarget(
               name: "AsyncDisplayKitBinary",
-              url: "https://github.com/TextureGroup/Texture/releases/download/${{ steps.get_version.outputs.version }}/Texture.xcframework.zip",
+              url: "https://github.com/3a4oT/Texture/releases/download/${{ steps.get_version.outputs.version }}/Texture.xcframework.zip",
               checksum: "${{ steps.verify.outputs.checksum }}"
           )
           \`\`\`

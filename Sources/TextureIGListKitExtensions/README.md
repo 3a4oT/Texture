@@ -4,33 +4,93 @@ Pure Swift implementation of IGListKit integration for Texture (AsyncDisplayKit)
 
 ## Quick Summary
 
-- **What it does:** Connects `IGListAdapter` with `ASCollectionNode` in SPM builds
-- **Why needed:** SPM traits don't work with Objective-C `#if` directives
-- **What you get:** One Swift extension method + re-exported modules (AsyncDisplayKit, IGListKit, IGListDiffKit)
-- **API:** `adapter.setCollectionNode(node)` replaces `[adapter setASDKCollectionNode:node]`
-- **Version:** Uses IGListKit 5.0+ (breaking changes from 4.x)
+- **What it does:** Connects `IGListAdapter` with `ASCollectionNode` via Swift API
+- **When needed:** **Required** for SPM Source builds, **Optional** for Binary/Carthage
+- **What you get:** Swift extension method + re-exported modules (AsyncDisplayKit, IGListKit, IGListDiffKit)
+- **API:** `adapter.setCollectionNode(node)` (Swift-friendly wrapper)
+- **Version:** Compatible with IGListKit 5.0+
 
 ## Overview
 
-This module provides a single extension method to `IGListAdapter` that enables seamless integration with `ASCollectionNode`.
+This module provides Swift extension methods for `IGListAdapter` to enable seamless integration with `ASCollectionNode`.
 
-**Why this exists:** The original Objective-C implementation (`setASDKCollectionNode:` in `IGListAdapter+AsyncDisplayKit.mm`) doesn't compile in SPM builds because Swift Package Manager traits don't work with conditional compilation (`#if AS_IG_LIST_KIT`) in Objective-C code. This is a pure Swift reimplementation of that Objective-C code.
+### Why This Exists
+
+**The Problem:** Swift Package Manager cannot export Objective-C categories on classes from other modules. The original Objective-C API `setASDKCollectionNode:` (defined in `IGListAdapter+AsyncDisplayKit.mm`) extends `IGListAdapter` class from the `IGListKit` module, which SPM cannot handle in source builds.
+
+**The Solution:** This is a pure Swift reimplementation that works around SPM's limitation.
+
+### When to Use
+
+| Build Type | Native Objective-C API | This Module |
+|------------|------------------------|-------------|
+| **SPM Source** | ❌ Not available | ✅ **Required** (only option) |
+| **SPM Binary** | ✅ Available | ❌ Not included (use Objective-C API) |
+| **Carthage** | ✅ Available | ❌ Not included (use Objective-C API) |
 
 **Reference implementation:** This Swift code is based on the existing Objective-C implementation in:
 - `Source/IGListAdapter+AsyncDisplayKit.mm`
 - `Source/Private/ASIGListAdapterBasedDataSource.mm`
 - `Source/Private/ASIGListAdapterBasedDataSource.h`
 
-## ⚠️ Important: IGListKit Version Differences
+## ⚠️ Important: IGListKit 5.0+ Updates
 
-**SPM uses IGListKit 5.0+ (latest major version)** which includes breaking changes compared to versions used by CocoaPods/Carthage.
+**This fork uses IGListKit 5.0+ (latest major version)** with important API changes:
 
-- **Not a drop-in replacement** - Migration and testing required
-- **API differences** - IGListKit 5.0 has breaking changes from 4.x
-- **Different target** - This is specifically for SPM users
-- **No Carthage/CocoaPods support planned** - We recommend migrating to SPM
+### Key Changes from IGListKit 4.x
 
-If you're currently using Texture with IGListKit via CocoaPods or Carthage, please thoroughly test your integration when migrating to SPM.
+- ✅ `allowsBackgroundDiffing` (NEW) - enables background thread diffing for better performance
+- ❌ `allowsBackgroundReloading` (REMOVED) - caused animation issues, automatically handled in 5.0+
+
+### Updated API Calls
+
+**Old (IGListKit 4.x):**
+```objc
+updater.allowsBackgroundReloading = NO;  // ❌ Removed in 5.0
+```
+
+**New (IGListKit 5.0+):**
+```objc
+updater.allowsBackgroundDiffing = YES;  // ✅ Use this instead
+```
+
+Both the Objective-C (`ASIGListAdapterBasedDataSource`) and Swift (`IGListAdapterDataSourceBridge`) implementations have been updated to use the new API.
+
+## API Comparison: Source vs Binary
+
+### SPM Source Distribution
+
+**Must use this module:**
+```swift
+import TextureIGListKitExtensions  // Re-exports AsyncDisplayKit + IGListKit
+
+adapter.setCollectionNode(node)  // ✅ Swift API (only option)
+```
+
+**Why?** SPM cannot compile Objective-C categories on classes from other modules (`IGListAdapter` is from `IGListKit` module).
+
+### SPM Binary / Carthage
+
+**Only Objective-C API available:**
+```swift
+import AsyncDisplayKit
+import IGListKit
+
+adapter.setASDKCollectionNode(node)  // ✅ Objective-C API (only option)
+```
+
+**Note:** `TextureIGListKitExtensions` is not included in binary/Carthage distributions. Use Objective-C API.
+
+## API Mapping: Objective-C → Swift
+
+**⚠️ Important:** Method names differ - not drop-in replacements.
+
+| Objective-C (Binary/Carthage) | Swift (SPM Source) |
+|------------------------------|-------------------|
+| `[adapter setASDKCollectionNode:node]` | `adapter.setCollectionNode(node)` |
+| `ASIGListSupplementaryViewSourceMethods` | `SupplementaryViewSourceMethods` |
+
+**📚 Full examples and troubleshooting:** See sections below.
 
 ## What You Get
 

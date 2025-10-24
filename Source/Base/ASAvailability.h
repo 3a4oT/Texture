@@ -81,8 +81,25 @@
 #endif
 
 #define AS_PIN_REMOTE_IMAGE __has_include(<PINRemoteImage/PINRemoteImage.h>)
-#define AS_IG_LIST_KIT __has_include(<IGListKit/IGListKit.h>)
-#define AS_IG_LIST_DIFF_KIT __has_include(<IGListDiffKit/IGListDiffKit.h>)
+
+// IGListKit integration:
+// - SPM Source: Disabled (use TextureIGListKitExtensions Swift module instead)
+// - SPM Binary/Carthage: Enabled (native Objective-C API available)
+#ifndef AS_IG_LIST_KIT
+  #if SWIFT_PACKAGE
+    #define AS_IG_LIST_KIT 0
+  #else
+    #define AS_IG_LIST_KIT 1
+  #endif
+#endif
+
+#ifndef AS_IG_LIST_DIFF_KIT
+  #if SWIFT_PACKAGE
+    #define AS_IG_LIST_DIFF_KIT 0
+  #else
+    #define AS_IG_LIST_DIFF_KIT 1
+  #endif
+#endif
 
 /**
  * For IGListKit versions < 3.0, you have to use IGListCollectionView.
