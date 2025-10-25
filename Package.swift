@@ -3,17 +3,27 @@
 
 import PackageDescription
 
-// AsyncDisplayKit dependencies
-let igListKitDep: Target.Dependency = .product(
-    name: "IGListKit",
-    package: "IGListKit",
-    condition: .when(traits: ["IGListKit"])
-)
-let igListDiffKitDep: Target.Dependency = .product(
-    name: "IGListDiffKit",
-    package: "IGListKit",
-    condition: .when(traits: ["IGListKit"])
-)
+// MARK: - SPM Source Distribution
+//
+// This package provides source distribution for Texture with Swift Package Manager.
+//
+// Features:
+//   - Core AsyncDisplayKit (all nodes, layout specs, TextNode2)
+//   - PINRemoteImage integration
+//   - IGListKit Swift wrapper (TextureIGListKitExtensions)
+//
+// IGListKit Integration:
+//   The native Objective-C IGListKit API (IGListAdapter+AsyncDisplayKit, etc.) is disabled
+//   because it requires conditional compilation flags (AS_IG_LIST_KIT=1) which create
+//   Objective-C headers that cannot be bridged to Swift. Instead, use the Swift wrapper:
+//
+//   - Import: TextureIGListKitExtensions
+//   - API: adapter.setCollectionNode(node) instead of adapter.setASDKCollectionNode(node)
+//   - See Sources/TextureIGListKitExtensions/README.md for complete API mapping
+//
+// Other Limitations:
+//   - Video/MapKit/Photos features not accessible (require framework linking)
+//   - Old TextNode disabled (use modern TextNode2)
 
 let package = Package(
     name: "Texture",
@@ -32,10 +42,6 @@ let package = Package(
             targets: ["TextureIGListKitExtensions"]
         )
     ],
-    traits: [
-        // Optional traits
-        .init(name: "IGListKit", description: "IGListKit integration for advanced collection view support")
-    ],
     dependencies: [
         .package(url: "https://github.com/pinterest/PINRemoteImage.git", from: "3.0.4"),
         .package(url: "https://github.com/Instagram/IGListKit", from: "5.0.0")
@@ -44,9 +50,7 @@ let package = Package(
         .target(
             name: "AsyncDisplayKit",
             dependencies: [
-                "PINRemoteImage",
-                igListKitDep,
-                igListDiffKitDep
+                "PINRemoteImage"
             ],
             path: "spm/Sources/AsyncDisplayKit",
             publicHeadersPath: "include",
@@ -57,9 +61,9 @@ let package = Package(
                 // Disable old TextNode by default for SPM
                 .define("AS_ENABLE_TEXTNODE", to: "0"),
 
-                // Trait-based conditional defines
-                .define("AS_IG_LIST_KIT", to: "1", .when(traits: ["IGListKit"])),
-                .define("AS_IG_LIST_DIFF_KIT", to: "1", .when(traits: ["IGListKit"])),
+                // IGListKit: Disabled for SPM (use TextureIGListKitExtensions instead)
+                .define("AS_IG_LIST_KIT", to: "0"),
+                .define("AS_IG_LIST_DIFF_KIT", to: "0"),
 
                 // Disabled features
                 .define("AS_USE_VIDEO", to: "0"),           // Not accessible from Swift via SPM
@@ -113,7 +117,8 @@ let package = Package(
             name: "TextureIGListKitExtensions",
             dependencies: [
                 "AsyncDisplayKit",
-                igListKitDep
+                .product(name: "IGListKit", package: "IGListKit"),
+                .product(name: "IGListDiffKit", package: "IGListKit")
             ],
             path: "Sources/TextureIGListKitExtensions",
             swiftSettings: [

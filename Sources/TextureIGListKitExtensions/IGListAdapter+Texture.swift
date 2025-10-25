@@ -10,6 +10,7 @@ import Foundation
 import ObjectiveC
 public import AsyncDisplayKit
 public import IGListKit
+public import IGListDiffKit
 
 /// Pure Swift data source bridge between IGListKit and AsyncDisplayKit
 ///

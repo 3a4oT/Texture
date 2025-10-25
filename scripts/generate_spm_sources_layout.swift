@@ -269,7 +269,30 @@ func generateSPM(publicHeadersPath: String, sourcesPath: String) {
     }
     createSymLinks(for: relativeHeadersPath, atPath: publicHeadersPath)
 
-    // 6. Create symbolic links for implementation files (.mm, .m) in target root
+    // 6. Create module.modulemap to eliminate umbrella header warnings
+    // Using umbrella directory instead of umbrella header to include all headers
+    let modulemapContent = """
+module AsyncDisplayKit {
+    umbrella "AsyncDisplayKit"
+
+    export *
+    module * { export * }
+}
+"""
+    // publicHeadersPath ends with "/AsyncDisplayKit"
+    // We need parent directory: remove last path component
+    let publicHeadersComponents = publicHeadersPath.components(separatedBy: "/")
+    let includeComponents = publicHeadersComponents.dropLast()
+    let includePath = includeComponents.joined(separator: "/")
+    let modulemapPath = includePath + "/module.modulemap"
+
+    do {
+        try modulemapContent.write(toFile: modulemapPath, atomically: true, encoding: .utf8)
+    } catch {
+        fatalError("Failed to write module.modulemap to \(modulemapPath): \(error.localizedDescription)")
+    }
+
+    // 7. Create symbolic links for implementation files (.mm, .m) in target root
     let implFiles = privateSources.filter { $0.hasSuffix(".mm") || $0.hasSuffix(".m") }
     let relativeSourcesPath = implFiles.map { (sourcePath) -> String in
         let relativePath  = sourcePath.replacingOccurrences(of: projectRoot,
