@@ -1,10 +1,8 @@
 name: Build and Release XCFramework
 
-# Trigger on new tags (e.g., v3.0.0, 3.1.0-beta)
+# Manual trigger only - releases are created by local build script
 on:
-  push:
-    tags:
-      - '*'
+  workflow_dispatch:
 
 jobs:
   build-xcframework:

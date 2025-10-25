@@ -244,6 +244,18 @@ CHECKSUM=$(swift package compute-checksum "${ZIP_PATH}")
 echo -e "${GREEN}✓ Checksum: ${CHECKSUM}${NC}"
 echo ""
 
+# Prompt for version
+echo -e "${YELLOW}Enter version for release (e.g., 4.0.2):${NC}"
+read VERSION
+
+if [ -z "$VERSION" ]; then
+    echo -e "${RED}Error: Version is required${NC}"
+    exit 1
+fi
+
+echo -e "${BLUE}Creating release ${VERSION}${NC}"
+echo ""
+
 # Get file size
 FILE_SIZE=$(du -h "${ZIP_PATH}" | cut -f1)
 FILE_SIZE_BYTES=$(stat -f%z "${ZIP_PATH}" 2>/dev/null || stat -c%s "${ZIP_PATH}" 2>/dev/null)
@@ -293,29 +305,90 @@ echo -e "  - Faster app launch time"
 echo -e "  - Niche features used by minority of apps"
 echo ""
 echo -e "${BLUE}================================================${NC}"
-echo -e "${BLUE}Next Steps${NC}"
+echo -e "${BLUE}Automated Release Process${NC}"
 echo -e "${BLUE}================================================${NC}"
 echo ""
-echo -e "${YELLOW}1. Create a GitHub Release:${NC}"
-echo -e "   git tag <version>"
-echo -e "   git push origin <version>"
-echo -e "   gh release create <version> --title \"<version>\" --notes \"Release notes\""
+
+# Step 1: Update Package.swift
+echo -e "${YELLOW}Step 1/5: Updating Package.swift...${NC}"
+RELEASE_URL="https://github.com/3a4oT/Texture/releases/download/${VERSION}/Texture.xcframework.zip"
+
+# Update URL with version
+sed -i '' "s|url: \"https://github.com/3a4oT/Texture/releases/download/[^/]*/Texture.xcframework.zip\"|url: \"${RELEASE_URL}\"|g" Package.swift
+
+# Update checksum
+sed -i '' "s|checksum: \"[^\"]*\"|checksum: \"${CHECKSUM}\"|g" Package.swift
+
+echo -e "${GREEN}✓ Package.swift updated${NC}"
 echo ""
-echo -e "${YELLOW}2. Upload the ZIP file:${NC}"
-echo -e "   gh release upload <version> ${ZIP_PATH}"
+
+# Step 2: Commit changes
+echo -e "${YELLOW}Step 2/5: Committing changes...${NC}"
+git add Package.swift
+git commit -m "Update version to ${VERSION} and binary checksum"
+echo -e "${GREEN}✓ Changes committed${NC}"
 echo ""
-echo -e "${YELLOW}3. Get the download URL:${NC}"
-echo -e "   https://github.com/TextureGroup/Texture/releases/download/<version>/${ZIP_NAME}"
+
+# Step 3: Create and push tag
+echo -e "${YELLOW}Step 3/5: Creating and pushing tag ${VERSION}...${NC}"
+git tag ${VERSION}
+git push origin development
+git push origin ${VERSION}
+echo -e "${GREEN}✓ Tag ${VERSION} created and pushed${NC}"
 echo ""
-echo -e "${YELLOW}4. Update Package.swift with binary target:${NC}"
+
+# Step 4: Create GitHub release
+echo -e "${YELLOW}Step 4/5: Creating GitHub release...${NC}"
+
+cat << EOF > /tmp/release_notes.md
+# Texture ${VERSION}
+
+## Binary Distribution (XCFramework)
+
+This release includes a precompiled XCFramework for faster build times.
+
+### Included Features
+- ✅ Core AsyncDisplayKit (all nodes, layout specs, TextNode2)
+- ✅ PINRemoteImage integration (image downloading/caching)
+- ✅ IGListKit integration (Objective-C API accessible from Swift)
+- ✅ Photos framework (ASMultiplexImageNode with PHAsset support)
+
+### Not Included
+- ❌ Video support (ASVideoNode)
+- ❌ MapKit integration (ASMapNode)
+
+### Dependencies
+- PINRemoteImage 3.0.4
+- PINCache 3.0.4
+- IGListKit ~> 5.0.0
+
+### Package.swift
+
+\`\`\`swift
+.binaryTarget(
+    name: "AsyncDisplayKitBinary",
+    url: "${RELEASE_URL}",
+    checksum: "${CHECKSUM}"
+)
+\`\`\`
+EOF
+
+gh release create ${VERSION} \
+  --title "${VERSION}" \
+  --notes-file /tmp/release_notes.md
+
+echo -e "${GREEN}✓ GitHub release created${NC}"
 echo ""
-echo -e "${GREEN}Add this to your targets array:${NC}"
+
+# Step 5: Upload ZIP
+echo -e "${YELLOW}Step 5/5: Uploading XCFramework to release...${NC}"
+gh release upload ${VERSION} ${ZIP_PATH}
+echo -e "${GREEN}✓ XCFramework uploaded${NC}"
 echo ""
-echo -e "${BLUE}.binaryTarget(${NC}"
-echo -e "${BLUE}    name: \"AsyncDisplayKitBinary\",${NC}"
-echo -e "${BLUE}    url: \"https://github.com/TextureGroup/Texture/releases/download/<version>/${ZIP_NAME}\",${NC}"
-echo -e "${BLUE}    checksum: \"${CHECKSUM}\"${NC}"
-echo -e "${BLUE})${NC}"
-echo ""
+
 echo -e "${BLUE}================================================${NC}"
+echo -e "${GREEN}🎉 Release ${VERSION} Complete!${NC}"
+echo -e "${BLUE}================================================${NC}"
+echo ""
+echo -e "Release URL: https://github.com/3a4oT/Texture/releases/tag/${VERSION}"
 echo ""
