@@ -192,18 +192,28 @@ cp -R "${CARTHAGE_XCFRAMEWORK}" "${XCFRAMEWORK_PATH}"
 echo -e "${GREEN}✓ XCFramework copied to: ${XCFRAMEWORK_PATH}${NC}"
 echo ""
 
-# Remove private IGListDiffKit headers that cause SPM integration issues
-# ASLayout+IGListDiffKit.h is marked as Private but Carthage includes it anyway
-# It imports IGListDiffKit which causes "file not found" errors in Clang scanner
-# The functionality is still available in the binary, only the header is removed
-echo -e "${YELLOW}Removing problematic private headers from XCFramework...${NC}"
-find "${XCFRAMEWORK_PATH}" -name "ASLayout+IGListDiffKit.h" -type f -exec rm -f {} \;
-REMAINING=$(find "${XCFRAMEWORK_PATH}" -name "ASLayout+IGListDiffKit.h" -type f | wc -l)
-if [ "$REMAINING" -eq 0 ]; then
-    echo -e "${GREEN}✓ Removed ASLayout+IGListDiffKit.h from all architectures${NC}"
-else
-    echo -e "${RED}⚠ Warning: Some headers were not removed${NC}"
-fi
+# Remove IGListKit headers that cause SPM integration issues
+# These headers import IGListKit/IGListDiffKit which causes "file not found" errors in Clang scanner
+# The functionality is still available in the binary (compiled in), only headers are removed
+# Users should use @_exported imports from BinaryWrapper instead
+echo -e "${YELLOW}Removing IGListKit integration headers from XCFramework...${NC}"
+
+HEADERS_TO_REMOVE=(
+    "ASLayout+IGListDiffKit.h"
+    "AsyncDisplayKit+IGListKitMethods.h"
+    "IGListAdapter+AsyncDisplayKit.h"
+)
+
+REMOVED_COUNT=0
+for HEADER in "${HEADERS_TO_REMOVE[@]}"; do
+    COUNT=$(find "${XCFRAMEWORK_PATH}" -name "${HEADER}" -type f -exec rm -f {} \; -print | wc -l)
+    REMOVED_COUNT=$((REMOVED_COUNT + COUNT))
+    if [ "$COUNT" -gt 0 ]; then
+        echo -e "  ${GREEN}✓${NC} Removed ${HEADER}"
+    fi
+done
+
+echo -e "${GREEN}✓ Removed ${REMOVED_COUNT} IGListKit header(s) from XCFramework${NC}"
 echo ""
 
 # Verify XCFramework structure
