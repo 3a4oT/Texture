@@ -225,16 +225,18 @@ func cleanup(at: String) {
 }
 
 func generateSPM(publicHeadersPath: String, sourcesPath: String) {
-    // 1. Delete all existing symlinks
+    // 1. Delete all existing symlinks (both sources and headers)
     cleanup(at: sourcesPath)
+    cleanup(at: publicHeadersPath)
+    // 2. Recreate directories
     try! FileManager.default.createDirectory(atPath: publicHeadersPath,
                                              withIntermediateDirectories: true,
                                              attributes: nil)
-    // 2. Find all public headers
+    // 3. Find all public headers
     var publicHeaders: [String] = []
     publicHeadersLayout.forEach { (headerLayout) in
         let fPath = projectRoot + "/" + headerLayout.path
-        // 2.1. Is it path to a file and not folder?
+        // 3.1. Is it path to a file and not folder?
         // Just grab it.
         guard headerLayout.isDir else {
             assert(FileManager.default.fileExists(atPath: fPath),
@@ -242,7 +244,7 @@ func generateSPM(publicHeadersPath: String, sourcesPath: String) {
             publicHeaders.append(fPath)
             return
         }
-        // 2.2. It's a folder path, search.
+        // 3.2. It's a folder path, search.
         switch headerLayout.searchPattern {
         case .currentDirOnly:
             let currentFolder = publicHeadersOnlyFromCurrent(directory: fPath)
@@ -253,11 +255,11 @@ func generateSPM(publicHeadersPath: String, sourcesPath: String) {
         }
     }
 
-    // 3. Find private headers and impl files.
+    // 4. Find private headers and impl files.
     let privateSources: [String] = privateHeadersAndImpl(sources: sourceFolder,
                                                          publicHeaders: publicHeaders)
 
-    // 4. For SPM: ALL headers (public + private) must be in publicHeadersPath
+    // 5. For SPM: ALL headers (public + private) must be in publicHeadersPath
     //    because framework-style imports look there
     let allHeaders = publicHeaders + privateSources.filter { $0.hasSuffix(".h") }
     let relativeHeadersPath = allHeaders.map { (headerPath) -> String in
@@ -267,7 +269,7 @@ func generateSPM(publicHeadersPath: String, sourcesPath: String) {
     }
     createSymLinks(for: relativeHeadersPath, atPath: publicHeadersPath)
 
-    // 5. Create symbolic links for implementation files (.mm, .m) in target root
+    // 6. Create symbolic links for implementation files (.mm, .m) in target root
     let implFiles = privateSources.filter { $0.hasSuffix(".mm") || $0.hasSuffix(".m") }
     let relativeSourcesPath = implFiles.map { (sourcePath) -> String in
         let relativePath  = sourcePath.replacingOccurrences(of: projectRoot,
