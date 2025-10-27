@@ -4,33 +4,49 @@ Pure Swift implementation of IGListKit integration for Texture (AsyncDisplayKit)
 
 ## Quick Summary
 
-- **What it does:** Connects `IGListAdapter` with `ASCollectionNode` in SPM builds
-- **Why needed:** SPM traits don't work with Objective-C `#if` directives
-- **What you get:** One Swift extension method + re-exported modules (AsyncDisplayKit, IGListKit, IGListDiffKit)
-- **API:** `adapter.setCollectionNode(node)` replaces `[adapter setASDKCollectionNode:node]`
-- **Version:** Uses IGListKit 5.0+ (breaking changes from 4.x)
+- **What it does:** Connects `IGListAdapter` with `ASCollectionNode` via Swift API
+- **Why needed:** SPM cannot export Objective-C categories on classes from other modules
+- **What you get:** Swift extension methods + re-exported modules (AsyncDisplayKit, IGListKit, IGListDiffKit)
+- **API:** `adapter.setCollectionNode(node)` (Swift-friendly wrapper)
+- **Version:** Compatible with IGListKit 5.0+
 
 ## Overview
 
-This module provides a single extension method to `IGListAdapter` that enables seamless integration with `ASCollectionNode`.
+This module provides Swift extension methods for `IGListAdapter` to enable seamless integration with `ASCollectionNode`.
 
-**Why this exists:** The original Objective-C implementation (`setASDKCollectionNode:` in `IGListAdapter+AsyncDisplayKit.mm`) doesn't compile in SPM builds because Swift Package Manager traits don't work with conditional compilation (`#if AS_IG_LIST_KIT`) in Objective-C code. This is a pure Swift reimplementation of that Objective-C code.
+### Why This Exists
+
+**The Problem:** Swift Package Manager cannot export Objective-C categories on classes from other modules. The original Objective-C API `setASDKCollectionNode:` (defined in `IGListAdapter+AsyncDisplayKit.mm`) extends `IGListAdapter` class from the `IGListKit` module, which SPM cannot handle in source builds.
+
+**The Solution:** This is a pure Swift reimplementation that works around SPM's limitation.
 
 **Reference implementation:** This Swift code is based on the existing Objective-C implementation in:
 - `Source/IGListAdapter+AsyncDisplayKit.mm`
 - `Source/Private/ASIGListAdapterBasedDataSource.mm`
 - `Source/Private/ASIGListAdapterBasedDataSource.h`
 
-## ⚠️ Important: IGListKit Version Differences
+## ⚠️ Important: IGListKit 5.0+ Updates
 
-**SPM uses IGListKit 5.0+ (latest major version)** which includes breaking changes compared to versions used by CocoaPods/Carthage.
+**This package uses IGListKit 5.0+ (latest major version)** with important API changes:
 
-- **Not a drop-in replacement** - Migration and testing required
-- **API differences** - IGListKit 5.0 has breaking changes from 4.x
-- **Different target** - This is specifically for SPM users
-- **No Carthage/CocoaPods support planned** - We recommend migrating to SPM
+### Key Changes from IGListKit 4.x
 
-If you're currently using Texture with IGListKit via CocoaPods or Carthage, please thoroughly test your integration when migrating to SPM.
+- `allowsBackgroundDiffing` (NEW) - enables background thread diffing for better performance
+- `allowsBackgroundReloading` (REMOVED) - caused animation issues, automatically handled in 5.0+
+
+### Updated API Calls
+
+**Old (IGListKit 4.x):**
+```swift
+updater.allowsBackgroundReloading = false  // Removed in 5.0
+```
+
+**New (IGListKit 5.0+):**
+```swift
+updater.allowsBackgroundDiffing = true  // Use this instead
+```
+
+The Swift implementation (`IGListAdapterDataSourceBridge`) has been updated to use the new API.
 
 ## What You Get
 
@@ -103,15 +119,7 @@ To connect them, you need special bridging code that:
 
 ## Using in iOS/tvOS App Projects
 
-### The Problem
-
-As of Xcode 26.0.1, Xcode does not provide a UI for enabling SPM package traits in iOS/tvOS app targets. Traits can only be enabled in Package.swift files, which app projects do not have.
-
-Note: If you are using a newer version of Xcode, check whether Apple has added trait configuration support in the Xcode UI.
-
-### The Solution
-
-Create an intermediate local Swift package to enable the IGListKit trait.
+Simply add Texture as a dependency and import both modules:
 
 **Step 1: Create Package Structure**
 
@@ -150,10 +158,7 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/TextureGroup/Texture.git",
-            from: "3.3.0",
-            traits: [
-                .init(name: "IGListKit")  // Enable IGListKit trait
-            ]
+            from: "3.3.0"
         )
     ],
     targets: [
