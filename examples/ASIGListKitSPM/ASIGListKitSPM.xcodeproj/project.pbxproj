@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0A069C022EAD66A0008ABA37 /* TextureIGListKitExtensions in Frameworks */ = {isa = PBXBuildFile; productRef = 0A069C012EAD66A0008ABA37 /* TextureIGListKitExtensions */; };
+		0A069C122EAF7997008ABA37 /* AsyncDisplayKit in Frameworks */ = {isa = PBXBuildFile; productRef = 0A069C112EAF7997008ABA37 /* AsyncDisplayKit */; };
 		FB32E77F25768F45000C4F42 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB32E77E25768F45000C4F42 /* AppDelegate.swift */; };
 		FB32E78125768F45000C4F42 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB32E78025768F45000C4F42 /* SceneDelegate.swift */; };
 		FB32E78325768F45000C4F42 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB32E78225768F45000C4F42 /* ViewController.swift */; };
@@ -394,6 +395,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0A069C022EAD66A0008ABA37 /* TextureIGListKitExtensions in Frameworks */,
+				0A069C122EAF7997008ABA37 /* AsyncDisplayKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -630,6 +632,7 @@
 			name = ASIGListKitSPM;
 			packageProductDependencies = (
 				0A069C012EAD66A0008ABA37 /* TextureIGListKitExtensions */,
+				0A069C112EAF7997008ABA37 /* AsyncDisplayKit */,
 			);
 			productName = ASIGListKitSPM;
 			productReference = FB32E77B25768F45000C4F42 /* ASIGListKitSPM.app */;
@@ -1303,6 +1306,11 @@
 		0A069C012EAD66A0008ABA37 /* TextureIGListKitExtensions */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = TextureIGListKitExtensions;
+		};
+		0A069C112EAF7997008ABA37 /* AsyncDisplayKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0A069C002EAD66A0008ABA37 /* XCLocalSwiftPackageReference "../../../Texture" */;
+			productName = AsyncDisplayKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

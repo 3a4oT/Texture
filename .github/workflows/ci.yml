@@ -21,11 +21,11 @@ jobs:
           - mode: spm
             name: Verify that Swift Package Manager works
           - mode: spm-texture-basic
-            name: Test SPM with default traits (AsyncDisplayKit)
+            name: Test SPM basic integration (AsyncDisplayKit)
           - mode: spm-texture-iglistkit
-            name: Test SPM with IGListKit trait
+            name: Test SPM with IGListKit extensions
           - mode: spm-app-iglistkit
-            name: Test SPM iOS app with IGListKit (local package wrapper)
+            name: Test SPM iOS app with IGListKit
           - mode: examples-pt1
             name: Build examples (examples-pt1)
           - mode: examples-pt2
