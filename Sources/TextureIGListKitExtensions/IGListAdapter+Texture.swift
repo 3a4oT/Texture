@@ -478,6 +478,54 @@ public enum SupplementaryViewSourceMethods {
     }
 }
 
+// MARK: - Section Controller Methods
+
+/// Pure Swift implementation of ASIGListSectionControllerMethods for SPM builds.
+///
+/// Provides helper methods for IGListKit section controllers using AsyncDisplayKit.
+/// Equivalent to the Objective-C `ASIGListSectionControllerMethods` class.
+public enum SectionControllerMethods {
+
+    /// Dequeues a reusable cell for AsyncDisplayKit.
+    ///
+    /// Call this from your section controller's `cellForItem(at:)` method.
+    /// AsyncDisplayKit manages actual cell rendering via `nodeBlockForItem(at:)`.
+    ///
+    /// - Parameters:
+    ///   - index: The index of the item
+    ///   - sectionController: The section controller requesting the cell
+    ///
+    /// - Returns: A dequeued `UICollectionViewCell` wrapping an `ASCellNode`
+    @MainActor
+    public static func cellForItem(
+        at index: Int,
+        sectionController: ListSectionController
+    ) -> UICollectionViewCell {
+        guard let collectionContext = sectionController.collectionContext else {
+            assertionFailure("Collection context is nil. Has the section controller been added to an adapter?")
+            return UICollectionViewCell()
+        }
+
+        guard let cellClass = NSClassFromString("_ASCollectionViewCell") else {
+            assertionFailure("Could not find _ASCollectionViewCell class. Is AsyncDisplayKit properly linked?")
+            return UICollectionViewCell()
+        }
+
+        return collectionContext.dequeueReusableCell(
+            of: cellClass as! UICollectionViewCell.Type,
+            for: sectionController,
+            at: index
+        )
+    }
+
+    /// Returns `.zero` — AsyncDisplayKit handles sizing via `sizeRangeForItem(at:)`.
+    ///
+    /// Call this from your section controller's `sizeForItem(at:)` method.
+    public static func sizeForItem(at index: Int) -> CGSize {
+        return .zero
+    }
+}
+
 // MARK: - List Adapter Extension
 
 /// Swift extensions for IGListKit integration with Texture
