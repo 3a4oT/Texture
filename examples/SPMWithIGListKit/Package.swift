@@ -15,11 +15,7 @@ let package = Package(
     ],
     dependencies: [
         .package(
-            path: "../..",
-            traits: [
-                // Enable IGListKit trait for advanced collection view support
-                .init(name: "IGListKit")
-            ]
+            path: "../.."
         )
     ],
     targets: [
