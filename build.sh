@@ -9,7 +9,7 @@
 # echo ************* diagnostics end
 
 # run this on a 2x device until we've updated snapshot images to 3x
-PLATFORM="${TEXTURE_BUILD_PLATFORM:-platform=iOS Simulator,OS=26.2,name=iPhone 16}"
+PLATFORM="${TEXTURE_BUILD_PLATFORM:-platform=iOS Simulator,OS=26.2,name=iPhone 17}"
 SDK="${TEXTURE_BUILD_SDK:-iphonesimulator26.2}"
 DERIVED_DATA_PATH="~/ASDKDerivedData"
 
