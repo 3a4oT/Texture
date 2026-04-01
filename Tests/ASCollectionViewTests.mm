@@ -1299,4 +1299,63 @@
 
 }
 
+- (void)testAllPendingStatePropertiesTransferredToView {
+  // Create node without loading view
+  UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
+  ASCollectionNode *node = [[ASCollectionNode alloc] initWithFrame:CGRectZero 
+                                             collectionViewLayout:layout];
+  
+  XCTAssertFalse(node.isNodeLoaded, @"View should not be loaded before setting properties");
+  
+  // Set pending state properties before view loads
+  node.leadingScreensForBatching = 3.6;
+  node.inverted = YES;
+  node.allowsMultipleSelection = YES;
+  node.alwaysBounceVertical = YES;
+  node.alwaysBounceHorizontal = YES;
+  node.pagingEnabled = YES;
+  node.showsVerticalScrollIndicator = NO;
+  node.showsHorizontalScrollIndicator = NO;
+  UIEdgeInsets testInsets = UIEdgeInsetsMake(10, 20, 30, 40);
+  node.contentInset = testInsets;
+  CGPoint testOffset = CGPointMake(50, 60);
+  node.contentOffset = testOffset;
+  ASCollectionViewTestDelegate *delegate = [[ASCollectionViewTestDelegate alloc] initWithNumberOfSections:10 numberOfItemsInSection:10];
+  node.delegate = delegate;
+  ASCollectionViewTestDelegate *dataSource = [[ASCollectionViewTestDelegate alloc] initWithNumberOfSections:20 numberOfItemsInSection:20];
+  node.dataSource = dataSource;
+
+  
+  // Load the view (triggers pending state transfer)
+  ASCollectionView *view = node.view;
+  
+  XCTAssertTrue(node.isNodeLoaded, @"View should be loaded after accessing node.view");
+  
+  // Verify properties were transferred correctly
+  XCTAssertEqual(view.leadingScreensForBatching, 3.6, 
+                 @"leadingScreensForBatching should transfer from pending state");
+  XCTAssertEqual(view.inverted, YES, 
+                 @"inverted should transfer from pending state");
+  XCTAssertEqual(view.allowsMultipleSelection, YES,
+                 @"allowsMultipleSelection should transfer from pending state");
+  XCTAssertEqual(view.alwaysBounceVertical, YES, 
+                 @"alwaysBounceVertical should transfer from pending state");
+  XCTAssertEqual(view.alwaysBounceHorizontal, YES, 
+                 @"alwaysBounceHorizontal should transfer from pending state");
+  XCTAssertTrue(UIEdgeInsetsEqualToEdgeInsets(view.contentInset, testInsets), 
+                @"contentInset should transfer from pending state");
+  XCTAssertTrue(CGPointEqualToPoint(view.contentOffset, testOffset), 
+                @"contentOffset should transfer from pending state");
+  XCTAssertEqual(view.showsVerticalScrollIndicator, NO, 
+                 @"showsVerticalScrollIndicator should transfer from pending state");
+  XCTAssertEqual(view.showsHorizontalScrollIndicator, NO, 
+                 @"showsHorizontalScrollIndicator should transfer from pending state");
+  XCTAssertEqual(view.pagingEnabled, YES, 
+                 @"pagingEnabled should transfer from pending state");
+  XCTAssertEqual(view.asyncDelegate, delegate,
+                 @"delegate should transfer from pending state");
+  XCTAssertEqual(view.asyncDataSource, dataSource,
+                 @"dataSource should transfer from pending state");
+}
+
 @end
