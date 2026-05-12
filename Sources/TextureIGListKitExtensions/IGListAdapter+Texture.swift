@@ -66,30 +66,23 @@ public import IGListDiffKit
         self.collectionDelegate = collectionDelegate
         super.init()
 
-        // Configure updater for optimal AsyncDisplayKit compatibility and performance.
+        // Configure updater for AsyncDisplayKit compatibility.
         //
-        // Historical context (IGListKit < 5.0):
-        // The Objective-C implementation set `allowsBackgroundReloading = NO` to prevent
-        // IGListKit from falling back to `-reloadData`, which is incompatible with
-        // AsyncDisplayKit's asynchronous rendering. This flag was critical to avoid:
-        // - Cell flashing during async display
-        // - Broken background rendering
-        // - UI glitches when collection view goes off-screen
+        // IGListKit 5.0+ removed `allowsBackgroundReloading` (the flag the old Obj-C
+        // bridge used to keep IGListKit on the batch-updates path). The remaining knob
+        // is `allowsBackgroundDiffing`, which moves diff computation off-main.
         //
-        // IGListKit 5.0+ changes:
-        // The `allowsBackgroundReloading` property was removed in commit 032e1b0 because
-        // it caused more problems than it solved (performance issues, animation artifacts,
-        // broken snapshots). IGListKit 5.0+ now automatically uses batch updates correctly,
-        // making the old workaround unnecessary.
-        // See: https://github.com/Instagram/IGListKit/commit/032e1b0b8367e68ef3015f0dc7dfe2f3ff2bae0c
+        // `allowsBackgroundDiffing = true` is **unsafe** with `ASCollectionNode`:
+        // IGListKit snapshots `numberOfSectionsInCollectionView:` when scheduling the
+        // background diff and re-reads it on the main thread when applying the result.
+        // ASCollectionNode-backed adapters routinely mutate their object array between
+        // those two points (push updates, model refresh, navigation), producing the
+        // classic `IGListBatchUpdateTransaction.m:145` "section count mismatch" and
+        // `ASCollectionInvalidUpdateException` crashes seen in production.
         //
-        // New optimization (IGListKit 5.0+):
-        // We enable `allowsBackgroundDiffing` (introduced in commit 9a11f6b) to perform
-        // diffing on a background thread, which improves scroll performance. This is a
-        // different concern than the old flag and is safe to enable with AsyncDisplayKit.
-        // See: https://github.com/Instagram/IGListKit/commit/9a11f6b55f02a8a89494035fb17203655e454404
+        // Diffing must stay on the main thread for AsyncDisplayKit consumers.
         if let updater = listAdapter.updater as? ListAdapterUpdater {
-            updater.allowsBackgroundDiffing = true
+            updater.allowsBackgroundDiffing = false
         }
     }
 
