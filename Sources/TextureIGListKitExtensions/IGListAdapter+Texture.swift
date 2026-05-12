@@ -61,6 +61,22 @@ public import IGListDiffKit
         return listAdapter as? UICollectionViewDelegateFlowLayout
     }
 
+    /// Section controller captured during `shouldBatchFetchForCollectionNode:` so that
+    /// `willBeginBatchFetchWithContext:` (called on a background queue) can forward
+    /// to the same controller without re-querying the list adapter.
+    ///
+    /// Per the original Obj-C bridge contract, those two calls are guaranteed not to
+    /// execute in parallel, so a plain weak reference (no lock) is safe.
+    private weak var sectionControllerForBatchFetching: ListSectionController?
+
+    /// AsyncDisplayKit's `ASCollectionDataSourceInterop` class contract: signals that
+    /// node-backed cells should still be dequeued through the standard collection-view
+    /// path. Required for proper interop between IGListKit's cell lifecycle and
+    /// ASCollectionNode's async rendering — without it, IGListKit can route
+    /// willDisplay/didEndDisplaying callbacks to indexPaths whose section controller
+    /// has already been invalidated.
+    @objc static var dequeuesCellsForNodeBackedItems: Bool { true }
+
     init(listAdapter: ListAdapter, collectionDelegate: ASCollectionDelegate?) {
         self.listAdapter = listAdapter
         self.collectionDelegate = collectionDelegate
@@ -94,6 +110,17 @@ public import IGListDiffKit
             return nil
         }
         return listAdapter.sectionController(for: object)
+    }
+
+    /// Returns the section's `supplementaryViewSource` as an `NSObject` ready for
+    /// selector-based dispatch. Mirrors `-supplementaryElementSourceForSection:`
+    /// in the original Obj-C bridge. Selector dispatch is used (instead of Swift
+    /// protocol bridging) because `ASSupplementaryNodeSource` methods are
+    /// `@optional` Obj-C protocol methods, and matching the rest of this file's
+    /// dispatch style keeps the bridging consistent.
+    private func supplementarySource(forSection section: Int) -> NSObject? {
+        guard let ctrl = sectionController(forSection: section) else { return nil }
+        return ctrl.supplementaryViewSource as? NSObject
     }
 
     // MARK: - ASCollectionDataSource
@@ -182,6 +209,49 @@ public import IGListDiffKit
         return sizeRangeFunc(asSectionController, selector, indexPath.item)
     }
 
+    // MARK: - ASCollectionDataSource (Supplementary Elements)
+
+    func collectionNode(_ collectionNode: ASCollectionNode,
+                        nodeBlockForSupplementaryElementOfKind kind: String,
+                        at indexPath: IndexPath) -> ASCellNodeBlock {
+        let selector = NSSelectorFromString("nodeBlockForSupplementaryElementOfKind:atIndex:")
+        guard let source = supplementarySource(forSection: indexPath.section),
+              source.responds(to: selector) else {
+            return { ASCellNode() }
+        }
+        let method = source.method(for: selector)
+        typealias Fn = @convention(c) (NSObject, Selector, NSString, Int) -> ASCellNodeBlock
+        let fn = unsafeBitCast(method, to: Fn.self)
+        return fn(source, selector, kind as NSString, indexPath.item)
+    }
+
+    func collectionNode(_ collectionNode: ASCollectionNode,
+                        nodeForSupplementaryElementOfKind kind: String,
+                        at indexPath: IndexPath) -> ASCellNode {
+        let selector = NSSelectorFromString("nodeForSupplementaryElementOfKind:atIndex:")
+        guard let source = supplementarySource(forSection: indexPath.section),
+              source.responds(to: selector) else {
+            return ASCellNode()
+        }
+        let method = source.method(for: selector)
+        typealias Fn = @convention(c) (NSObject, Selector, NSString, Int) -> ASCellNode
+        let fn = unsafeBitCast(method, to: Fn.self)
+        return fn(source, selector, kind as NSString, indexPath.item)
+    }
+
+    func collectionNode(_ collectionNode: ASCollectionNode,
+                        supplementaryElementKindsInSection section: Int) -> [String] {
+        let selector = NSSelectorFromString("supportedElementKinds")
+        guard let source = supplementarySource(forSection: section),
+              source.responds(to: selector) else {
+            return []
+        }
+        let method = source.method(for: selector)
+        typealias Fn = @convention(c) (NSObject, Selector) -> NSArray
+        let fn = unsafeBitCast(method, to: Fn.self)
+        return (fn(source, selector) as? [String]) ?? []
+    }
+
     // MARK: - ASCollectionDelegate
 
     func collectionNode(_ collectionNode: ASCollectionNode, didSelectItemAt indexPath: IndexPath) {
@@ -248,6 +318,112 @@ public import IGListDiffKit
         delegate.collectionView?(collectionNode.view as! UICollectionView, didEndDisplaying: cell, forItemAt: indexPath)
     }
 
+    // MARK: - ASCollectionDelegate (Batch Fetching)
+
+    /// Asks whether AsyncDisplayKit should trigger a tail-load batch fetch.
+    ///
+    /// Forwarding rules mirror `-shouldBatchFetchForCollectionNode:` in the original
+    /// Obj-C bridge:
+    /// 1. If the upstream `collectionDelegate` (passed to `setCollectionNode`)
+    ///    implements the selector itself, delegate to it.
+    /// 2. Otherwise, locate the last section's controller and ask it via
+    ///    `ASSectionController` (`-shouldBatchFetch` or, if absent, just the presence
+    ///    of `-beginBatchFetchWithContext:`).
+    /// 3. Capture the chosen section controller in
+    ///    `sectionControllerForBatchFetching` so the subsequent
+    ///    `willBeginBatchFetchWithContext:` call lands on the same instance.
+    func shouldBatchFetch(for collectionNode: ASCollectionNode) -> Bool {
+        let delegateSelector = NSSelectorFromString("shouldBatchFetchForCollectionNode:")
+        if let asDelegate = collectionDelegate as? NSObject,
+           asDelegate.responds(to: delegateSelector) {
+            let method = asDelegate.method(for: delegateSelector)
+            typealias Fn = @convention(c) (NSObject, Selector, ASCollectionNode) -> Bool
+            let fn = unsafeBitCast(method, to: Fn.self)
+            return fn(asDelegate, delegateSelector, collectionNode)
+        }
+
+        let sectionCount = numberOfSections(in: collectionNode)
+        guard sectionCount > 0,
+              let controller = sectionController(forSection: sectionCount - 1) as? NSObject else {
+            return false
+        }
+
+        let shouldBatchFetchSel = NSSelectorFromString("shouldBatchFetch")
+        let beginBatchFetchSel = NSSelectorFromString("beginBatchFetchWithContext:")
+
+        let result: Bool
+        if controller.responds(to: shouldBatchFetchSel) {
+            let method = controller.method(for: shouldBatchFetchSel)
+            typealias Fn = @convention(c) (NSObject, Selector) -> Bool
+            let fn = unsafeBitCast(method, to: Fn.self)
+            result = fn(controller, shouldBatchFetchSel)
+        } else {
+            result = controller.responds(to: beginBatchFetchSel)
+        }
+
+        if result {
+            sectionControllerForBatchFetching = controller as? ListSectionController
+        }
+        return result
+    }
+
+    /// Called by AsyncDisplayKit on a background queue when it's time to fetch more
+    /// content. Forwards to the upstream collection delegate if it implements the
+    /// selector, otherwise dispatches to the section controller captured in
+    /// `shouldBatchFetch(for:)`.
+    func collectionNode(_ collectionNode: ASCollectionNode,
+                        willBeginBatchFetchWith context: ASBatchContext) {
+        let delegateSelector = NSSelectorFromString("collectionNode:willBeginBatchFetchWithContext:")
+        if let asDelegate = collectionDelegate as? NSObject,
+           asDelegate.responds(to: delegateSelector) {
+            let method = asDelegate.method(for: delegateSelector)
+            typealias Fn = @convention(c) (NSObject, Selector, ASCollectionNode, ASBatchContext) -> Void
+            let fn = unsafeBitCast(method, to: Fn.self)
+            fn(asDelegate, delegateSelector, collectionNode, context)
+            return
+        }
+
+        guard let controller = sectionControllerForBatchFetching as? NSObject else { return }
+        sectionControllerForBatchFetching = nil
+
+        let selector = NSSelectorFromString("beginBatchFetchWithContext:")
+        guard controller.responds(to: selector) else { return }
+        let method = controller.method(for: selector)
+        typealias Fn = @convention(c) (NSObject, Selector, ASBatchContext) -> Void
+        let fn = unsafeBitCast(method, to: Fn.self)
+        fn(controller, selector, context)
+    }
+
+    // MARK: - ASCollectionDelegateFlowLayout (Headers/Footers)
+
+    /// AsyncDisplayKit-side header sizing. Returns `ASSizeRangeZero` when the
+    /// supplementary source either doesn't exist or doesn't implement
+    /// `-sizeRangeForSupplementaryElementOfKind:atIndex:`, matching the original
+    /// Obj-C bridge behavior (no header).
+    func collectionNode(_ collectionNode: ASCollectionNode,
+                        sizeRangeForHeaderInSection section: Int) -> ASSizeRange {
+        return sizeRangeForSupplementaryElement(ofKind: UICollectionView.elementKindSectionHeader,
+                                                in: section)
+    }
+
+    func collectionNode(_ collectionNode: ASCollectionNode,
+                        sizeRangeForFooterInSection section: Int) -> ASSizeRange {
+        return sizeRangeForSupplementaryElement(ofKind: UICollectionView.elementKindSectionFooter,
+                                                in: section)
+    }
+
+    private func sizeRangeForSupplementaryElement(ofKind kind: String, in section: Int) -> ASSizeRange {
+        let selector = NSSelectorFromString("sizeRangeForSupplementaryElementOfKind:atIndex:")
+        guard let source = supplementarySource(forSection: section),
+              source.responds(to: selector) else {
+            return ASSizeRangeZero
+        }
+        let method = source.method(for: selector)
+        typealias Fn = @convention(c) (NSObject, Selector, NSString, Int) -> ASSizeRange
+        let fn = unsafeBitCast(method, to: Fn.self)
+        return fn(source, selector, kind as NSString, 0)
+    }
+
     // MARK: - ASCollectionDelegateFlowLayout
 
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, insetForSectionAt section: Int) -> UIEdgeInsets {
@@ -260,6 +436,45 @@ public import IGListDiffKit
 
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumInteritemSpacingForSectionAt section: Int) -> CGFloat {
         return delegate?.collectionView?(collectionView, layout: collectionViewLayout, minimumInteritemSpacingForSectionAt: section) ?? 0
+    }
+
+    // MARK: - ASCollectionDataSourceInterop
+
+    /// Required by `ASCollectionDataSourceInterop` (runtime-declared above in
+    /// `conforms(to:)`). AsyncDisplayKit relies on these forwarders to bridge
+    /// `IGListAdapter`'s UIKit data-source path to ASCollectionNode's interop layer.
+    /// Without them, the runtime conformance is a lie and `ASCollectionView` may
+    /// drop willDisplay callbacks or attempt to dequeue cells through the wrong path.
+    @objc func collectionView(_ collectionView: UICollectionView,
+                              cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        guard let dataSource = dataSource else { return UICollectionViewCell() }
+        return dataSource.collectionView(collectionView, cellForItemAt: indexPath)
+    }
+
+    @objc func collectionView(_ collectionView: UICollectionView,
+                              viewForSupplementaryElementOfKind kind: String,
+                              at indexPath: IndexPath) -> UICollectionReusableView {
+        guard let dataSource = dataSource,
+              let view = dataSource.collectionView?(collectionView,
+                                                   viewForSupplementaryElementOfKind: kind,
+                                                   at: indexPath) else {
+            return UICollectionReusableView()
+        }
+        return view
+    }
+
+    // MARK: - ASCollectionDelegateInterop
+
+    @objc func collectionView(_ collectionView: UICollectionView,
+                              willDisplay cell: UICollectionViewCell,
+                              forItemAt indexPath: IndexPath) {
+        delegate?.collectionView?(collectionView, willDisplay: cell, forItemAt: indexPath)
+    }
+
+    @objc func collectionView(_ collectionView: UICollectionView,
+                              didEndDisplaying cell: UICollectionViewCell,
+                              forItemAt indexPath: IndexPath) {
+        delegate?.collectionView?(collectionView, didEndDisplaying: cell, forItemAt: indexPath)
     }
 }
 
