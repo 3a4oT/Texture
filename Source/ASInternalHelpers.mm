@@ -77,7 +77,17 @@ void ASInitializeFrameworkMainThreadOnDestructor(void)
 {
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
-    ASDisplayNodeCAssertMainThread();
+    // Called from the `__attribute__((destructor))` in ASDisplayNode.mm, which
+    // runs during library teardown via `__cxa_finalize_ranges`. On Mac Catalyst
+    // the C++ finalizer can be dispatched off the main thread, so the historical
+    // `ASDisplayNodeCAssertMainThread()` aborts the process mid-shutdown.
+    //
+    // The cached values below are only consumed by code that was already running
+    // before teardown, so if this path is hit off-main during shutdown there is
+    // nothing left to cache and we can safely no-op.
+    if (!NSThread.isMainThread) {
+      return;
+    }
     // Ensure these values are cached on the main thread before needed in the background.
     if (ASActivateExperimentalFeature(ASExperimentalLayerDefaults)) {
       // Nop. We will gather default values on-demand in ASDefaultAllowsGroupOpacity and ASDefaultAllowsEdgeAntialiasing
