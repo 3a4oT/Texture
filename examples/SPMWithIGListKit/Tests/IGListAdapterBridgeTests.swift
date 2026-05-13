@@ -219,6 +219,76 @@ struct IGListAdapterBridgeTests {
                 "allowsBackgroundDiffing must be false for ASCollectionNode consumers; with it on, IGListKit races between the background diff snapshot and the main-thread apply and throws at IGListBatchUpdateTransaction.m:145")
     }
 
+    /// After `performUpdates` removes sections, UICollectionView may still hold
+    /// cached layout attributes for the removed sections and request supplementary
+    /// views for them during a subsequent layout pass. Without a guard, the bridge
+    /// forwards to IGListAdapter which throws `NSInternalInconsistencyException`
+    /// because the section controller at that index is nil.
+    ///
+    /// This test calls the bridge's Interop selector directly with an index that
+    /// is outside the adapter's current section map — the call must return a
+    /// placeholder view without crashing.
+    @Test("bridge returns placeholder view for stale supplementary section after removal")
+    func bridge_returnsPlaceholder_forStaleSuppViewAfterSectionRemoval() async {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 568))
+        let viewController = UIViewController()
+        window.rootViewController = viewController
+        window.makeKeyAndVisible()
+
+        let collectionNode = ASCollectionNode(collectionViewLayout: UICollectionViewFlowLayout())
+        collectionNode.frame = window.bounds
+        viewController.view.addSubnode(collectionNode)
+        _ = collectionNode.view
+
+        let adapter = ListAdapter(updater: ListAdapterUpdater(),
+                                  viewController: viewController,
+                                  workingRangeSize: 0)
+        let dataSource = HeaderTestDataSource(items: [])
+        adapter.dataSource = dataSource
+        adapter.setCollectionNode(collectionNode)
+
+        // Load 3 sections so IGListAdapter has a valid section map for [0,1,2].
+        dataSource.items = [TestItem(id: 1), TestItem(id: 2), TestItem(id: 3)]
+        await withCheckedContinuation { continuation in
+            adapter.performUpdates(animated: false) { _ in continuation.resume() }
+        }
+        collectionNode.view.layoutIfNeeded()
+        #expect(collectionNode.view.numberOfSections == 3)
+
+        // Reduce to 1 section. Section map in IGListAdapter now only covers [0].
+        // UICollectionView may still hold stale layout attributes for sections 1
+        // and 2 until its next full layout invalidation.
+        dataSource.items = [TestItem(id: 1)]
+        await withCheckedContinuation { continuation in
+            adapter.performUpdates(animated: false) { _ in continuation.resume() }
+        }
+        #expect(collectionNode.view.numberOfSections == 1)
+
+        // Simulate UICollectionView requesting a supplementary view for the now-
+        // removed section 2. Without the bridge guard, IGListAdapter would throw
+        // NSInternalInconsistencyException here.
+        let bridge = collectionNode.dataSource
+        guard let bridgeObj = bridge as? NSObject else {
+            Issue.record("collectionNode.dataSource is not NSObject — bridge not installed")
+            return
+        }
+        let sel = NSSelectorFromString("collectionView:viewForSupplementaryElementOfKind:atIndexPath:")
+        guard bridgeObj.responds(to: sel) else {
+            Issue.record("Bridge does not respond to viewForSupplementaryElementOfKind:atIndexPath:")
+            return
+        }
+        let imp = bridgeObj.method(for: sel)
+        typealias SupplementaryFn = @convention(c) (NSObject, Selector, UICollectionView, NSString, IndexPath) -> UICollectionReusableView
+        let fn = unsafeBitCast(imp, to: SupplementaryFn.self)
+        let staleIndexPath = IndexPath(item: 0, section: 2)
+        // Must not crash — returns a zero-size placeholder instead of throwing.
+        let view = fn(bridgeObj, sel, collectionNode.view,
+                      UICollectionView.elementKindSectionHeader as NSString,
+                      staleIndexPath)
+        #expect(view is UICollectionReusableView,
+                "Bridge must return a placeholder view for a stale section, not crash via IGListAdapter")
+    }
+
     /// Exercises the supplementary header layout path on the bridge.
     ///
     /// UICollectionView populates `layoutAttributesForSupplementaryElement`

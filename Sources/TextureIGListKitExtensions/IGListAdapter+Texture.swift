@@ -463,7 +463,13 @@ public import IGListDiffKit
     func collectionView(_ collectionView: UICollectionView,
                         viewForSupplementaryElementOfKind kind: String,
                         at indexPath: IndexPath) -> UICollectionReusableView {
+        // Guard against stale layout attributes: after performUpdates reduces the
+        // section count, UICollectionView may still request supplementary views for
+        // sections that no longer exist in the adapter's section map. IGListAdapter
+        // throws NSInternalInconsistencyException in that case, so check validity
+        // here before forwarding.
         guard let dataSource = dataSource,
+              sectionController(forSection: indexPath.section) != nil,
               let view = dataSource.collectionView?(collectionView,
                                                    viewForSupplementaryElementOfKind: kind,
                                                    at: indexPath) else {
