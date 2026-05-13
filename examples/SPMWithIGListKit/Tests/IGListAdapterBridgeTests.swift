@@ -189,6 +189,35 @@ struct IGListAdapterBridgeTests {
         #expect(dequeues == true,
                 "+dequeuesCellsForNodeBackedItems must return true; returning false makes ASCollectionView skip IGListAdapter.cellForItemAtIndexPath: and crash with sectionController != nil at IGListAdapter.m:897")
     }
+
+    /// Asserts that `setCollectionNode(_:)` leaves
+    /// `ListAdapterUpdater.allowsBackgroundDiffing` set to `false`. When that
+    /// flag is `true`, IGListKit snapshots `numberOfSectionsInCollectionView:`
+    /// on a background queue and re-reads it on the main thread when
+    /// applying the result. `ASCollectionNode`-backed adapters routinely
+    /// mutate their object array between those two points, so on apply the
+    /// live count does not match the snapshot and IGListKit raises
+    /// `NSInternalInconsistencyException` at
+    /// `IGListBatchUpdateTransaction.m:145`. The lifecycle tests cannot
+    /// trigger that race reliably in a unit-test environment, so this
+    /// defensive assertion on the flag itself is the only deterministic
+    /// guard.
+    @Test("setCollectionNode disables allowsBackgroundDiffing on the updater")
+    func setCollectionNode_disablesBackgroundDiffing() {
+        let collectionNode = ASCollectionNode(collectionViewLayout: UICollectionViewFlowLayout())
+        _ = collectionNode.view
+
+        let adapter = ListAdapter(updater: ListAdapterUpdater(),
+                                  viewController: nil,
+                                  workingRangeSize: 0)
+        let dataSource = TestListAdapterDataSource(items: [TestItem(id: 1)])
+        adapter.dataSource = dataSource
+        adapter.setCollectionNode(collectionNode)
+
+        let updater = adapter.updater as? ListAdapterUpdater
+        #expect(updater?.allowsBackgroundDiffing == false,
+                "allowsBackgroundDiffing must be false for ASCollectionNode consumers; with it on, IGListKit races between the background diff snapshot and the main-thread apply and throws at IGListBatchUpdateTransaction.m:145")
+    }
 }
 
 // MARK: - Fixtures
