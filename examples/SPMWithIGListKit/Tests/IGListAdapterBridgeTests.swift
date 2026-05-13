@@ -218,6 +218,62 @@ struct IGListAdapterBridgeTests {
         #expect(updater?.allowsBackgroundDiffing == false,
                 "allowsBackgroundDiffing must be false for ASCollectionNode consumers; with it on, IGListKit races between the background diff snapshot and the main-thread apply and throws at IGListBatchUpdateTransaction.m:145")
     }
+
+    /// Exercises the supplementary header layout path on the bridge.
+    ///
+    /// UICollectionView populates `layoutAttributesForSupplementaryElement`
+    /// from the size returned by the `ASCollectionDelegateFlowLayout`
+    /// `collectionNode:sizeRangeForHeaderInSection:` forwarder, which in
+    /// turn invokes `sizeRangeForSupplementaryElementOfKind:atIndex:` on
+    /// the section controller's supplementary source. Breaking either of
+    /// those forwarders (e.g. dropping the selector dispatch, returning
+    /// `ASSizeRangeZero`) leaves the layout with a nil or zero-height
+    /// header.
+    ///
+    /// Scope: this test catches regressions in the **sizing** forwarders.
+    /// The node-block forwarder
+    /// (`nodeBlockForSupplementaryElementOfKind:atIndexPath:`) governs the
+    /// rendered content of the header, not its layout attributes, so a
+    /// regression there is not caught here. Test 3 (selector probe) checks
+    /// the runtime-conformed Interop selector
+    /// `viewForSupplementaryElementOfKind:atIndexPath:` separately.
+    @Test("supplementary header layout flows through the bridge")
+    func supplementary_header_layoutFlowsThroughBridge() async {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 568))
+        let viewController = UIViewController()
+        window.rootViewController = viewController
+        window.makeKeyAndVisible()
+
+        let collectionNode = ASCollectionNode(collectionViewLayout: UICollectionViewFlowLayout())
+        collectionNode.frame = window.bounds
+        viewController.view.addSubnode(collectionNode)
+        _ = collectionNode.view
+
+        let adapter = ListAdapter(updater: ListAdapterUpdater(),
+                                  viewController: viewController,
+                                  workingRangeSize: 0)
+        let dataSource = HeaderTestDataSource(items: [])
+        adapter.dataSource = dataSource
+        adapter.setCollectionNode(collectionNode)
+
+        dataSource.items = [TestItem(id: 1)]
+        await withCheckedContinuation { continuation in
+            adapter.performUpdates(animated: false) { _ in
+                continuation.resume()
+            }
+        }
+        collectionNode.view.layoutIfNeeded()
+
+        #expect(collectionNode.view.numberOfSections == 1)
+        let headerAttributes = collectionNode.view.layoutAttributesForSupplementaryElement(
+            ofKind: UICollectionView.elementKindSectionHeader,
+            at: IndexPath(item: 0, section: 0)
+        )
+        #expect(headerAttributes != nil,
+                "Bridge did not produce supplementary header layout attributes; the supplementary-view forwarders on the bridge are unreachable from ASCollectionNode")
+        #expect(headerAttributes?.size.height ?? 0 > 0,
+                "Header layout reported zero height; sizeRangeForHeaderInSection: forwarder is not returning the section controller's size")
+    }
 }
 
 // MARK: - Fixtures
@@ -257,6 +313,111 @@ private final class TestListAdapterDataSource: NSObject, ListAdapterDataSource {
 
     func emptyView(for listAdapter: ListAdapter) -> UIView? {
         return nil
+    }
+}
+
+@MainActor
+private final class HeaderTestDataSource: NSObject, ListAdapterDataSource {
+    var items: [TestItem]
+
+    init(items: [TestItem]) {
+        self.items = items
+    }
+
+    func objects(for listAdapter: ListAdapter) -> [ListDiffable] {
+        return items
+    }
+
+    func listAdapter(_ listAdapter: ListAdapter,
+                     sectionControllerFor object: Any) -> ListSectionController {
+        return HeaderTestSectionController()
+    }
+
+    func emptyView(for listAdapter: ListAdapter) -> UIView? {
+        return nil
+    }
+}
+
+private final class HeaderTestSectionController: ListSectionController,
+    @preconcurrency ASSectionController,
+    @preconcurrency ASSupplementaryNodeSource,
+    @preconcurrency ListSupplementaryViewSource {
+    override init() {
+        super.init()
+        self.supplementaryViewSource = self
+    }
+
+    // MARK: - ListSectionController (item)
+
+    override public func sizeForItem(at index: Int) -> CGSize {
+        return .zero
+    }
+
+    override public func cellForItem(at index: Int) -> UICollectionViewCell {
+        guard let cellClass = NSClassFromString("_ASCollectionViewCell"),
+              let collectionContext = self.collectionContext else {
+            return UICollectionViewCell()
+        }
+        return collectionContext.dequeueReusableCell(of: cellClass as! UICollectionViewCell.Type,
+                                                    for: self,
+                                                    at: index)
+    }
+
+    // MARK: - ASSectionController
+
+    public func nodeBlockForItem(at index: Int) -> ASCellNodeBlock {
+        return {
+            let node = ASCellNode()
+            node.style.preferredSize = CGSize(width: 320, height: 44)
+            return node
+        }
+    }
+
+    public func sizeRangeForItem(at index: Int) -> ASSizeRange {
+        return ASSizeRange(min: CGSize(width: 100, height: 44),
+                           max: CGSize(width: 320, height: 44))
+    }
+
+    // MARK: - ListSupplementaryViewSource
+
+    @MainActor
+    public func supportedElementKinds() -> [String] {
+        return [UICollectionView.elementKindSectionHeader]
+    }
+
+    public func viewForSupplementaryElement(ofKind elementKind: String,
+                                            at index: Int) -> UICollectionReusableView {
+        guard let reusableViewClass = NSClassFromString("_ASCollectionReusableView"),
+              let collectionContext = self.collectionContext else {
+            return UICollectionReusableView()
+        }
+        return collectionContext.dequeueReusableSupplementaryView(
+            ofKind: elementKind,
+            for: self,
+            class: reusableViewClass as! UICollectionReusableView.Type,
+            at: index
+        )
+    }
+
+    public func sizeForSupplementaryView(ofKind elementKind: String, at index: Int) -> CGSize {
+        return .zero
+    }
+
+    // MARK: - ASSupplementaryNodeSource
+
+    public func nodeBlockForSupplementaryElement(ofKind elementKind: String,
+                                                 at index: Int) -> ASCellNodeBlock {
+        return {
+            let node = ASCellNode()
+            node.style.preferredSize = CGSize(width: 320, height: 32)
+            return node
+        }
+    }
+
+    public func sizeRangeForSupplementaryElement(ofKind elementKind: String,
+                                                 at index: Int) -> ASSizeRange {
+        return ASSizeRange(min: CGSize(width: 100, height: 32),
+                           max: CGSize(width: 320, height: 32))
     }
 }
 
