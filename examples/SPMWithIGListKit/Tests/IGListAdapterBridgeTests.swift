@@ -155,6 +155,40 @@ struct IGListAdapterBridgeTests {
         #expect(bridgeClass?.responds(to: classMethodSelector) == true,
                 "Bridge class missing +dequeuesCellsForNodeBackedItems")
     }
+
+    /// Probes the actual return value of `+dequeuesCellsForNodeBackedItems`,
+    /// not just its existence. The class contract of
+    /// `ASCollectionDataSourceInterop` requires this to be `true` so that
+    /// `ASCollectionView` routes cell creation through
+    /// `IGListAdapter.collectionView:cellForItemAtIndexPath:`. If it ever
+    /// returns `false`, ASCollectionView bypasses the adapter's section map
+    /// and `willDisplayCell:forItemAtIndexPath:` later fires for indexPaths
+    /// the adapter does not know about, producing the
+    /// `Invalid parameter not satisfying: sectionController != nil` crash
+    /// observed in production at `IGListAdapter.m:897`.
+    @Test("Bridge +dequeuesCellsForNodeBackedItems returns true")
+    func bridge_dequeuesCellsForNodeBackedItems_returnsTrue() {
+        let collectionNode = ASCollectionNode(collectionViewLayout: UICollectionViewFlowLayout())
+        _ = collectionNode.view
+
+        let adapter = ListAdapter(updater: ListAdapterUpdater(),
+                                  viewController: nil,
+                                  workingRangeSize: 0)
+        let dataSource = TestListAdapterDataSource(items: [TestItem(id: 1)])
+        adapter.dataSource = dataSource
+        adapter.setCollectionNode(collectionNode)
+
+        let bridge = collectionNode.dataSource
+        let bridgeClass: AnyClass = object_getClass(bridge)!
+        let selector = NSSelectorFromString("dequeuesCellsForNodeBackedItems")
+
+        let imp = bridgeClass.method(for: selector)
+        typealias Fn = @convention(c) (AnyClass, Selector) -> Bool
+        let dequeues = unsafeBitCast(imp, to: Fn.self)(bridgeClass, selector)
+
+        #expect(dequeues == true,
+                "+dequeuesCellsForNodeBackedItems must return true; returning false makes ASCollectionView skip IGListAdapter.cellForItemAtIndexPath: and crash with sectionController != nil at IGListAdapter.m:897")
+    }
 }
 
 // MARK: - Fixtures
