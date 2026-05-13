@@ -30,6 +30,26 @@ function clean_derived_data {
     eval find $DERIVED_DATA_PATH -mindepth 1 -delete
 }
 
+# CocoaPods CDN periodically returns HTTP 429; retry with exponential backoff.
+function pod_install_with_retry {
+    local attempts=3
+    local delay=15
+    local n=1
+    while true; do
+        if pod install "$@"; then
+            return 0
+        fi
+        if (( n >= attempts )); then
+            echo "pod install failed after $n attempts" >&2
+            return 1
+        fi
+        echo "pod install failed (attempt $n/$attempts); retrying in ${delay}s..." >&2
+        sleep "$delay"
+        delay=$(( delay * 2 ))
+        n=$(( n + 1 ))
+    done
+}
+
 # Build example
 function build_example {
     example="$1"
@@ -38,7 +58,7 @@ function build_example {
 
     if [ -f "${example}/Podfile" ]; then
         echo "Using CocoaPods"
-        pod install --project-directory=$example
+        pod_install_with_retry --project-directory=$example
         
         workspace=$(ls -d ${example}/*.xcworkspace)
         filename=$(basename -- "$workspace")
@@ -90,7 +110,7 @@ cleanup
 case "$MODE" in
 tests|all)
     echo "Building & testing AsyncDisplayKit."
-    pod install
+    pod_install_with_retry
     set -o pipefail && xcodebuild \
         -workspace AsyncDisplayKit.xcworkspace \
         -scheme AsyncDisplayKit \
@@ -102,7 +122,7 @@ tests|all)
 
 tests_listkit)
     echo "Building & testing AsyncDisplayKit+IGListKit."
-    pod install --project-directory=SubspecWorkspaces/ASDKListKit
+    pod_install_with_retry --project-directory=SubspecWorkspaces/ASDKListKit
     set -o pipefail && xcodebuild \
         -workspace SubspecWorkspaces/ASDKListKit/ASDKListKit.xcworkspace \
         -scheme ASDKListKitTests \
@@ -156,6 +176,16 @@ examples-pt4)
     echo "Verifying that all AsyncDisplayKit examples compile."
     for example in $((find ./examples -type d -maxdepth 1 \( ! -iname ".*" \)) | tail -n +17); do
         echo "Building (examples-pt4) $example"
+
+        build_example $example
+    done
+    success="1"
+    ;;
+
+examples-cocoapods-smoke)
+    echo "Building representative CocoaPods examples as a smoke check."
+    for example in examples/AsyncDisplayKitOverview examples/ASDKgram; do
+        echo "Building (examples-cocoapods-smoke) $example"
 
         build_example $example
     done
