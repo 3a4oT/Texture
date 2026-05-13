@@ -443,17 +443,26 @@ public import IGListDiffKit
     /// Required by `ASCollectionDataSourceInterop` (runtime-declared above in
     /// `conforms(to:)`). AsyncDisplayKit relies on these forwarders to bridge
     /// `IGListAdapter`'s UIKit data-source path to ASCollectionNode's interop layer.
-    /// Without them, the runtime conformance is a lie and `ASCollectionView` may
-    /// drop willDisplay callbacks or attempt to dequeue cells through the wrong path.
-    @objc func collectionView(_ collectionView: UICollectionView,
-                              cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+    ///
+    /// The explicit `@objc(...)` selectors are critical: AsyncDisplayKit calls
+    /// these methods with the historical UIKit selector names (e.g.
+    /// `collectionView:cellForItemAtIndexPath:`, with the `IndexPath` suffix).
+    /// Swift's automatic `@objc` name generation derives the selector from the
+    /// Swift argument labels, producing `collectionView:cellForItemAt:`, which
+    /// the Obj-C runtime does not recognize. Without the explicit names, ASCollectionView
+    /// hits `_CF_forwarding_prep_0` → "unrecognized selector sent to instance"
+    /// on the very first cell dequeue.
+    @objc(collectionView:cellForItemAtIndexPath:)
+    func collectionView(_ collectionView: UICollectionView,
+                        cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         guard let dataSource = dataSource else { return UICollectionViewCell() }
         return dataSource.collectionView(collectionView, cellForItemAt: indexPath)
     }
 
-    @objc func collectionView(_ collectionView: UICollectionView,
-                              viewForSupplementaryElementOfKind kind: String,
-                              at indexPath: IndexPath) -> UICollectionReusableView {
+    @objc(collectionView:viewForSupplementaryElementOfKind:atIndexPath:)
+    func collectionView(_ collectionView: UICollectionView,
+                        viewForSupplementaryElementOfKind kind: String,
+                        at indexPath: IndexPath) -> UICollectionReusableView {
         guard let dataSource = dataSource,
               let view = dataSource.collectionView?(collectionView,
                                                    viewForSupplementaryElementOfKind: kind,
@@ -465,15 +474,17 @@ public import IGListDiffKit
 
     // MARK: - ASCollectionDelegateInterop
 
-    @objc func collectionView(_ collectionView: UICollectionView,
-                              willDisplay cell: UICollectionViewCell,
-                              forItemAt indexPath: IndexPath) {
+    @objc(collectionView:willDisplayCell:forItemAtIndexPath:)
+    func collectionView(_ collectionView: UICollectionView,
+                        willDisplay cell: UICollectionViewCell,
+                        forItemAt indexPath: IndexPath) {
         delegate?.collectionView?(collectionView, willDisplay: cell, forItemAt: indexPath)
     }
 
-    @objc func collectionView(_ collectionView: UICollectionView,
-                              didEndDisplaying cell: UICollectionViewCell,
-                              forItemAt indexPath: IndexPath) {
+    @objc(collectionView:didEndDisplayingCell:forItemAtIndexPath:)
+    func collectionView(_ collectionView: UICollectionView,
+                        didEndDisplaying cell: UICollectionViewCell,
+                        forItemAt indexPath: IndexPath) {
         delegate?.collectionView?(collectionView, didEndDisplaying: cell, forItemAt: indexPath)
     }
 }
