@@ -8,7 +8,7 @@ jobs:
         DEVELOPER_DIR: /Applications/Xcode_26.4.app/Contents/Developer
     strategy:
       matrix:
-        mode: [framework, life-without-cocoapods, carthage, spm, spm-texture-basic, spm-texture-iglistkit, spm-app-iglistkit, examples-cocoapods-smoke]
+        mode: [framework, life-without-cocoapods, carthage, spm, spm-texture-basic, spm-texture-iglistkit, spm-app-iglistkit, examples-pt1, examples-pt2, examples-pt3, examples-pt4]
         include:
           - mode: framework
             name: Build Texture as a dynamic framework
@@ -24,8 +24,14 @@ jobs:
             name: Test SPM with IGListKit extensions
           - mode: spm-app-iglistkit
             name: Test SPM iOS app with IGListKit
-          - mode: examples-cocoapods-smoke
-            name: Build CocoaPods examples (smoke)
+          - mode: examples-pt1
+            name: Build examples (examples-pt1)
+          - mode: examples-pt2
+            name: Build examples (examples-pt2)
+          - mode: examples-pt3
+            name: Build examples (examples-pt3)
+          - mode: examples-pt4
+            name: Build examples (examples-pt4)
     name: ${{ matrix.name }}
     runs-on: macos-26
     steps:

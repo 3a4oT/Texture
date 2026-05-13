@@ -8,11 +8,11 @@
 # ls -ld /Applications/Xcode*
 # echo ************* diagnostics end
 
-# Defaults match the macos-26 runner's latest installed runtime / SDK
-# (iOS 26.4.1, ships with Xcode 26.4.1). Override via TEXTURE_BUILD_*
-# env vars for local runs against a different Xcode.
-PLATFORM="${TEXTURE_BUILD_PLATFORM:-platform=iOS Simulator,OS=26.4.1,name=iPhone 17}"
-SDK="${TEXTURE_BUILD_SDK:-iphonesimulator26.4}"
+# Pin the simulator family but let xcodebuild pick whatever iOS runtime is
+# actually installed on the host (the macos-26 runner refreshes minor versions
+# without notice). Override via TEXTURE_BUILD_* env vars for local runs.
+PLATFORM="${TEXTURE_BUILD_PLATFORM:-platform=iOS Simulator,name=iPhone 17,OS=latest}"
+SDK="${TEXTURE_BUILD_SDK:-iphonesimulator}"
 DERIVED_DATA_PATH="~/ASDKDerivedData"
 
 # It is pitch black.
@@ -176,16 +176,6 @@ examples-pt4)
     echo "Verifying that all AsyncDisplayKit examples compile."
     for example in $((find ./examples -type d -maxdepth 1 \( ! -iname ".*" \)) | tail -n +17); do
         echo "Building (examples-pt4) $example"
-
-        build_example $example
-    done
-    success="1"
-    ;;
-
-examples-cocoapods-smoke)
-    echo "Building representative CocoaPods examples as a smoke check."
-    for example in examples/AsyncDisplayKitOverview examples/ASDKgram; do
-        echo "Building (examples-cocoapods-smoke) $example"
 
         build_example $example
     done
