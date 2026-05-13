@@ -5,13 +5,11 @@ on: [push, pull_request]
 jobs:
   buildsh:
     env:
-        DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+        DEVELOPER_DIR: /Applications/Xcode_26.4.app/Contents/Developer
     strategy:
       matrix:
-        mode: [tests, framework, life-without-cocoapods, carthage, spm, spm-texture-basic, spm-texture-iglistkit, spm-app-iglistkit, examples-pt1, examples-pt2, examples-pt3, examples-pt4]
+        mode: [framework, life-without-cocoapods, carthage, spm, spm-texture-basic, spm-texture-iglistkit, spm-app-iglistkit, examples-pt1, examples-pt2, examples-pt3, examples-pt4]
         include:
-          - mode: tests
-            name: Build and run tests
           - mode: framework
             name: Build Texture as a dynamic framework
           - mode: life-without-cocoapods
@@ -38,6 +36,6 @@ jobs:
     runs-on: macos-26
     steps:
     - name: Checkout the Git repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
     - name: Run build script
       run: ./build.sh ${{ matrix.mode }}

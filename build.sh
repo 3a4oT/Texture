@@ -8,9 +8,11 @@
 # ls -ld /Applications/Xcode*
 # echo ************* diagnostics end
 
-# run this on a 2x device until we've updated snapshot images to 3x
-PLATFORM="${TEXTURE_BUILD_PLATFORM:-platform=iOS Simulator,OS=26.2,name=iPhone 17}"
-SDK="${TEXTURE_BUILD_SDK:-iphonesimulator26.2}"
+# Defaults match the macos-26 runner's latest installed runtime / SDK
+# (iOS 26.4.1, ships with Xcode 26.4.1). Override via TEXTURE_BUILD_*
+# env vars for local runs against a different Xcode.
+PLATFORM="${TEXTURE_BUILD_PLATFORM:-platform=iOS Simulator,OS=26.4.1,name=iPhone 17}"
+SDK="${TEXTURE_BUILD_SDK:-iphonesimulator26.4}"
 DERIVED_DATA_PATH="~/ASDKDerivedData"
 
 # It is pitch black.
