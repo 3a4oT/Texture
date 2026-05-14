@@ -289,6 +289,77 @@ struct IGListAdapterBridgeTests {
                 "Bridge must return a placeholder view for a stale section, not crash via IGListAdapter")
     }
 
+    /// After `performUpdates` removes sections, IGListKit's internal section-count
+    /// fallback (`[IGListBatchUpdateTransaction _reload]`) issues
+    /// `[UICollectionView reloadData]` followed by `layoutBelowIfNeeded`, which
+    /// continues to request cells based on layout attributes cached from the
+    /// previous state — i.e. for sections that no longer exist in the adapter's
+    /// section map. Without the bridge guard, `IGListAdapter` asserts at
+    /// `IGListAdapter+UICollectionView.m:47` with
+    /// "Section controller is nil { … sectionController: (null), dataSource: <…> }".
+    ///
+    /// This test calls the bridge's Interop `cellForItemAtIndexPath:` selector
+    /// directly with a section index that was removed by a preceding
+    /// `performUpdates` — the call must return a placeholder cell without crashing.
+    @Test("bridge returns placeholder cell for stale section after removal")
+    func bridge_returnsPlaceholder_forStaleCellAfterSectionRemoval() async {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 568))
+        let viewController = UIViewController()
+        window.rootViewController = viewController
+        window.makeKeyAndVisible()
+
+        let collectionNode = ASCollectionNode(collectionViewLayout: UICollectionViewFlowLayout())
+        collectionNode.frame = window.bounds
+        viewController.view.addSubnode(collectionNode)
+        _ = collectionNode.view
+
+        let adapter = ListAdapter(updater: ListAdapterUpdater(),
+                                  viewController: viewController,
+                                  workingRangeSize: 0)
+        let dataSource = TestListAdapterDataSource(items: [])
+        adapter.dataSource = dataSource
+        adapter.setCollectionNode(collectionNode)
+
+        // Load 3 sections so IGListAdapter has a valid section map for [0,1,2].
+        dataSource.items = [TestItem(id: 1), TestItem(id: 2), TestItem(id: 3)]
+        await withCheckedContinuation { continuation in
+            adapter.performUpdates(animated: false) { _ in continuation.resume() }
+        }
+        collectionNode.view.layoutIfNeeded()
+        #expect(collectionNode.view.numberOfSections == 3)
+
+        // Reduce to 1 section. Section map in IGListAdapter now only covers [0].
+        // UICollectionView may still hold stale layout attributes for sections 1
+        // and 2 until its next full layout invalidation.
+        dataSource.items = [TestItem(id: 1)]
+        await withCheckedContinuation { continuation in
+            adapter.performUpdates(animated: false) { _ in continuation.resume() }
+        }
+        #expect(collectionNode.view.numberOfSections == 1)
+
+        // Simulate UICollectionView requesting a cell for the now-removed section 2.
+        // Without the bridge guard, IGListAdapter asserts at
+        // IGListAdapter+UICollectionView.m:47.
+        let bridge = collectionNode.dataSource
+        guard let bridgeObj = bridge as? NSObject else {
+            Issue.record("collectionNode.dataSource is not NSObject — bridge not installed")
+            return
+        }
+        let sel = NSSelectorFromString("collectionView:cellForItemAtIndexPath:")
+        guard bridgeObj.responds(to: sel) else {
+            Issue.record("Bridge does not respond to cellForItemAtIndexPath:")
+            return
+        }
+        let imp = bridgeObj.method(for: sel)
+        typealias CellFn = @convention(c) (NSObject, Selector, UICollectionView, IndexPath) -> UICollectionViewCell
+        let fn = unsafeBitCast(imp, to: CellFn.self)
+        let staleIndexPath = IndexPath(item: 0, section: 2)
+        // Must not crash — returns a placeholder cell instead of asserting.
+        let cell = fn(bridgeObj, sel, collectionNode.view, staleIndexPath)
+        #expect(type(of: cell) == UICollectionViewCell.self,
+                "Bridge must return a vanilla placeholder cell for a stale section, not crash via IGListAdapter")
+    }
+
     /// Exercises the supplementary header layout path on the bridge.
     ///
     /// UICollectionView populates `layoutAttributesForSupplementaryElement`

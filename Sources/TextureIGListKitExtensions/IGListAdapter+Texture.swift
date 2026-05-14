@@ -462,7 +462,23 @@ private let iglistkitGuardLog = OSLog(subsystem: "TextureIGListKitExtensions",
     @objc(collectionView:cellForItemAtIndexPath:)
     func collectionView(_ collectionView: UICollectionView,
                         cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        guard let dataSource = dataSource else { return UICollectionViewCell() }
+        // Guard against stale layout attributes: when IGListKit falls back to
+        // `[UICollectionView reloadData]` after detecting a section-count mismatch in
+        // `IGListBatchUpdateTransaction._didDiff:onBackground:`, the surrounding
+        // `layoutBelowIfNeeded` pass continues to request cells based on the
+        // collection view's already-cached layout attributes — which still reference
+        // sections that no longer exist in the adapter's section map. `IGListAdapter`
+        // asserts at `IGListAdapter+UICollectionView.m:47` ("Section controller is
+        // nil { … sectionController: (null), dataSource: <…> }") when forwarded a
+        // `cellForItemAtIndexPath:` for such a stale section. Check section
+        // controller validity here before forwarding to IGListAdapter; if the
+        // section has been removed from the adapter's map, return a placeholder
+        // cell so the assertion is sidestepped and the next valid layout pass
+        // discards the placeholder.
+        guard let dataSource = dataSource,
+              sectionController(forSection: indexPath.section) != nil else {
+            return UICollectionViewCell()
+        }
         return dataSource.collectionView(collectionView, cellForItemAt: indexPath)
     }
 
