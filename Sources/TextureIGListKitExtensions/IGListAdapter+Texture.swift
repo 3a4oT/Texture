@@ -8,9 +8,16 @@
 
 import Foundation
 import ObjectiveC
+import os.log
 public import AsyncDisplayKit
 public import IGListKit
 public import IGListDiffKit
+
+/// Subsystem-scoped log used by the section-count guard in
+/// `ListAdapter.performUpdatesWithFallback`. Reads in Console.app under
+/// `subsystem: TextureIGListKitExtensions`, `category: iglistkit-guard`.
+private let iglistkitGuardLog = OSLog(subsystem: "TextureIGListKitExtensions",
+                                      category: "iglistkit-guard")
 
 /// Pure Swift data source bridge between IGListKit and AsyncDisplayKit
 ///
@@ -789,6 +796,83 @@ extension ListAdapter {
         } else {
             collectionNode.onDidLoad { [weak self] node in
                 self?.collectionView = node.view as? UICollectionView
+            }
+        }
+    }
+
+    /// Performs `performUpdates(animated:completion:)` after a pre-flight check that the
+    /// collection view's section count matches the adapter's last applied object count.
+    /// If the counts diverge, falls back to `reloadData(completion:)` instead of letting
+    /// IGListKit raise `NSInternalInconsistencyException` from
+    /// `IGListBatchUpdateTransaction._didDiff:onBackground:` with the message
+    ///
+    ///     The UICollectionView's section count (N) didn't match the
+    ///     IGListAdapter's count (M), so we can't performBatchUpdates.
+    ///     Falling back to reloadData.
+    ///
+    /// (IGListKit's own message text says "falling back to reloadData", but `IGAssert`
+    /// raises an NSException in release builds — the documented fallback never executes.)
+    ///
+    /// ## When this guard catches the mismatch
+    ///
+    /// The pre-flight catches **already-divergent** states: the collection view was reset
+    /// externally (e.g. `reloadData` called from another code path, the data source was
+    /// reassigned, the view was re-laid out and lost its section count) while the adapter
+    /// still holds the previous applied snapshot.
+    ///
+    /// ## When this guard does NOT catch the mismatch
+    ///
+    /// It does **not** prevent the same exception when the divergence is produced by a
+    /// concurrent in-flight diff. IGListKit captures a `sectionMap` snapshot inside its
+    /// background diff queue; a second `performUpdates` that mutates the data source
+    /// between snapshot and apply will still raise from `_didDiff:onBackground:` —
+    /// the assertion fires inside IGListKit, after this guard has already returned.
+    /// To prevent that race, the caller must serialize concurrent loads on the same
+    /// adapter (cancel the in-flight task before kicking off a new one).
+    ///
+    /// Use this in tandem with a serialization strategy, not as a replacement for one.
+    ///
+    /// - Parameters:
+    ///   - animated: Forwarded to `performUpdates` when the pre-flight check passes.
+    ///     Ignored on the `reloadData` fallback path — `reloadData` is never animated.
+    ///   - completion: Invoked when either `performUpdates` or `reloadData` finishes.
+    ///     The `Bool` argument matches `performUpdates` semantics on the normal path.
+    ///     On the `reloadData` fallback path the value is always `true`, since
+    ///     `reloadData` has no concept of a partial result.
+    @MainActor
+    public func performUpdatesWithFallback(animated: Bool,
+                                   completion: ((Bool) -> Void)? = nil) {
+        guard let view = collectionView else {
+            performUpdates(animated: animated, completion: completion)
+            return
+        }
+
+        let viewSections = view.numberOfSections
+        let adapterSections = objects().count
+
+        if viewSections != adapterSections {
+            os_log(.error, log: iglistkitGuardLog,
+                   "performUpdatesWithFallback: section-count divergence (view=%{public}d, adapter=%{public}d) — falling back to reloadData",
+                   viewSections, adapterSections)
+            reloadData { _ in
+                completion?(true)
+            }
+            return
+        }
+
+        performUpdates(animated: animated, completion: completion)
+    }
+
+    /// `async` overload of `performUpdatesWithFallback(animated:completion:)`.
+    /// Suspends until the underlying `performUpdates` or `reloadData` fallback finishes,
+    /// matching the `await adapter.performUpdates(animated:)` call shape that the
+    /// completion-handler bridge produces for `performUpdates`.
+    @MainActor
+    @discardableResult
+    public func performUpdatesWithFallback(animated: Bool) async -> Bool {
+        await withCheckedContinuation { continuation in
+            performUpdatesWithFallback(animated: animated) { finished in
+                continuation.resume(returning: finished)
             }
         }
     }
