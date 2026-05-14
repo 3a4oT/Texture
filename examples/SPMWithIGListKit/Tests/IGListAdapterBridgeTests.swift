@@ -358,6 +358,13 @@ struct IGListAdapterBridgeTests {
         let cell = fn(bridgeObj, sel, collectionNode.view, staleIndexPath)
         #expect(type(of: cell) == UICollectionViewCell.self,
                 "Bridge must return a vanilla placeholder cell for a stale section, not crash via IGListAdapter")
+        // UIKit asserts at UICollectionView.m:3930 ("The collection view's data
+        // source returned a cell without a reuseIdentifier.") when a cell returned
+        // from `collectionView:cellForItemAtIndexPath:` has no reuse identifier
+        // set. The placeholder must therefore be dequeued (not directly
+        // constructed) so it carries one.
+        #expect(cell.reuseIdentifier != nil,
+                "Placeholder cell must be dequeued so it carries a reuseIdentifier; UIKit asserts at UICollectionView.m:3930 when a returned cell has none")
     }
 
     /// Exercises the supplementary header layout path on the bridge.

@@ -19,6 +19,16 @@ public import IGListDiffKit
 private let iglistkitGuardLog = OSLog(subsystem: "TextureIGListKitExtensions",
                                       category: "iglistkit-guard")
 
+/// Reuse identifier for the placeholder cell returned by the bridge's
+/// `collectionView:cellForItemAtIndexPath:` forwarder when the requested section
+/// has been removed from the adapter's section map. The cell is registered with
+/// the collection view in `setCollectionNode(_:)` so that
+/// `dequeueReusableCell(withReuseIdentifier:for:)` satisfies UIKit's contract
+/// that every returned cell must carry a reuse identifier
+/// (assertion at `UICollectionView.m:3930`,
+/// "The collection view's data source returned a cell without a reuseIdentifier.").
+private let placeholderCellReuseIdentifier = "TextureIGListKitExtensions.placeholderCell"
+
 /// Pure Swift data source bridge between IGListKit and AsyncDisplayKit
 ///
 /// ## Thread Safety (based on AsyncDisplayKit documentation)
@@ -472,12 +482,22 @@ private let iglistkitGuardLog = OSLog(subsystem: "TextureIGListKitExtensions",
         // nil { … sectionController: (null), dataSource: <…> }") when forwarded a
         // `cellForItemAtIndexPath:` for such a stale section. Check section
         // controller validity here before forwarding to IGListAdapter; if the
-        // section has been removed from the adapter's map, return a placeholder
-        // cell so the assertion is sidestepped and the next valid layout pass
-        // discards the placeholder.
+        // section has been removed from the adapter's map, return a dequeued
+        // placeholder cell so the assertion is sidestepped and the next valid
+        // layout pass discards the placeholder.
+        //
+        // The placeholder is dequeued (rather than constructed directly) so it
+        // carries the reuse identifier UIKit requires of every cell returned
+        // from `collectionView:cellForItemAtIndexPath:` — see
+        // `UICollectionView.m:3930` ("The collection view's data source returned a
+        // cell without a reuseIdentifier."). The placeholder class is registered
+        // against the collection view in `setCollectionNode(_:)`.
         guard let dataSource = dataSource,
               sectionController(forSection: indexPath.section) != nil else {
-            return UICollectionViewCell()
+            return collectionView.dequeueReusableCell(
+                withReuseIdentifier: placeholderCellReuseIdentifier,
+                for: indexPath
+            )
         }
         return dataSource.collectionView(collectionView, cellForItemAt: indexPath)
     }
@@ -809,9 +829,18 @@ extension ListAdapter {
 
         if collectionNode.isNodeLoaded {
             self.collectionView = collectionNode.view as? UICollectionView
+            // Register the bridge's placeholder cell so the stale-section guard in
+            // collectionView:cellForItemAtIndexPath: can return a dequeued cell that
+            // satisfies UIKit's reuseIdentifier requirement.
+            (collectionNode.view as? UICollectionView)?
+                .register(UICollectionViewCell.self,
+                          forCellWithReuseIdentifier: placeholderCellReuseIdentifier)
         } else {
             collectionNode.onDidLoad { [weak self] node in
                 self?.collectionView = node.view as? UICollectionView
+                (node.view as? UICollectionView)?
+                    .register(UICollectionViewCell.self,
+                              forCellWithReuseIdentifier: placeholderCellReuseIdentifier)
             }
         }
     }
