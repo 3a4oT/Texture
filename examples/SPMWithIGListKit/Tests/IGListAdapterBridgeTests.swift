@@ -344,6 +344,90 @@ struct IGListAdapterBridgeTests {
         #expect(headerAttributes?.size.height ?? 0 > 0,
                 "Header layout reported zero height; sizeRangeForHeaderInSection: forwarder is not returning the section controller's size")
     }
+
+    /// Pre-flight guard in `performUpdatesWithFallback` must let normal diffs flow through:
+    /// when `collectionView.numberOfSections` already matches
+    /// `adapter.objects().count`, the call must dispatch to `performUpdates(animated:)`
+    /// and apply the diff exactly as a direct call to `performUpdates(animated:)` would.
+    /// This is the common case — the guard must not regress it.
+    @Test("performUpdatesWithFallback applies diffs when section counts match")
+    func performUpdatesWithFallback_appliesDiffs_whenSectionCountsMatch() async {
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 568))
+        let viewController = UIViewController()
+        window.rootViewController = viewController
+        window.makeKeyAndVisible()
+
+        let collectionNode = ASCollectionNode(collectionViewLayout: UICollectionViewFlowLayout())
+        collectionNode.frame = window.bounds
+        viewController.view.addSubnode(collectionNode)
+        _ = collectionNode.view
+
+        let adapter = ListAdapter(updater: ListAdapterUpdater(),
+                                  viewController: viewController,
+                                  workingRangeSize: 0)
+        let dataSource = TestListAdapterDataSource(items: [])
+        adapter.dataSource = dataSource
+        adapter.setCollectionNode(collectionNode)
+
+        // 0 → 2 sections through the fallback-aware entry point.
+        dataSource.items = [TestItem(id: 1), TestItem(id: 2)]
+        await adapter.performUpdatesWithFallback(animated: false)
+        collectionNode.view.layoutIfNeeded()
+        #expect(collectionNode.view.numberOfSections == 2)
+
+        // 2 → 4 sections through the fallback-aware entry point on a subsequent diff.
+        dataSource.items = [TestItem(id: 1), TestItem(id: 2), TestItem(id: 3), TestItem(id: 4)]
+        await adapter.performUpdatesWithFallback(animated: false)
+        collectionNode.view.layoutIfNeeded()
+        #expect(collectionNode.view.numberOfSections == 4)
+    }
+
+    // NOTE: There is no companion regression test that exercises the
+    // `reloadData(completion:)` fallback branch in `performUpdatesWithFallback`. The branch is
+    // reached when `collectionView.numberOfSections != adapter.objects().count`, a state
+    // that the IGListKit + AsyncDisplayKit API contract intentionally prevents callers
+    // from constructing directly:
+    //
+    //   - Swapping `collectionNode.dataSource` to a non-bridge stand-in crashes during
+    //     layout: AsyncDisplayKit's interop layer dispatches UIKit-historical selectors
+    //     (`collectionView:cellForItemAtIndexPath:` etc.) at the data source, and only
+    //     `IGListAdapterDataSourceBridge` runtime-conforms to them. A `UIKit`/`ASDK`
+    //     data source that omits the runtime conformance hits "unrecognized selector"
+    //     on the first cell dequeue.
+    //   - Subclassing `ListAdapter` to stub `objects()` fails at compile time because
+    //     `IGListAdapter` is not declared `open` outside its defining module.
+    //   - Method swizzling `UICollectionView.numberOfSections` leaks across other tests
+    //     in the same process and breaks the unrelated bridge-regression coverage above.
+    //
+    // The fallback branch is a single `if` with a small body and is verified by
+    // inspection of `performUpdatesWithFallback(animated:completion:)` in
+    // `IGListAdapter+Texture.swift`. The two tests above (happy path; nil collection
+    // view) catch regressions in the surrounding contract (signature, completion
+    // semantics, no-op forwarding) that would otherwise mask a broken fallback.
+
+    /// `performUpdatesWithFallback` must remain callable before a collection view is attached.
+    /// IGListAdapter accepts `performUpdates` with no collection view (it becomes a
+    /// no-op that still invokes completion), and the guard must not change that
+    /// contract — it should fall through to `performUpdates` directly without
+    /// dereferencing the nil view.
+    ///
+    /// The completion's `Bool` argument matches whatever the underlying
+    /// `performUpdates` returns in this state (typically `false`, since no batch
+    /// update actually ran). The contract this test enforces is "does not crash and
+    /// invokes the completion handler exactly once" — the specific value is incidental.
+    @Test("performUpdatesWithFallback is a no-op when no collection view is attached")
+    func performUpdatesWithFallback_isNoOp_whenNoCollectionViewAttached() async {
+        let adapter = ListAdapter(updater: ListAdapterUpdater(),
+                                  viewController: nil,
+                                  workingRangeSize: 0)
+        let dataSource = TestListAdapterDataSource(items: [TestItem(id: 1)])
+        adapter.dataSource = dataSource
+
+        // No setCollectionNode call — adapter.collectionView is nil. The guard's nil
+        // branch forwards to performUpdates. Test must not crash and must receive the
+        // callback.
+        _ = await adapter.performUpdatesWithFallback(animated: false)
+    }
 }
 
 // MARK: - Fixtures
