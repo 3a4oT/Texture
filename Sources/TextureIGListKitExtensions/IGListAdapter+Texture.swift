@@ -482,28 +482,30 @@ private let placeholderSupplementaryViewReuseIdentifier = "TextureIGListKitExten
     @objc(collectionView:cellForItemAtIndexPath:)
     func collectionView(_ collectionView: UICollectionView,
                         cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        // Guard against stale layout attributes: when IGListKit falls back to
-        // `[UICollectionView reloadData]` after detecting a section-count mismatch in
-        // `IGListBatchUpdateTransaction._didDiff:onBackground:`, the surrounding
-        // `layoutBelowIfNeeded` pass continues to request cells based on the
-        // collection view's already-cached layout attributes — which still reference
-        // sections that no longer exist in the adapter's section map. `IGListAdapter`
-        // asserts at `IGListAdapter+UICollectionView.m:47` ("Section controller is
-        // nil { … sectionController: (null), dataSource: <…> }") when forwarded a
-        // `cellForItemAtIndexPath:` for such a stale section. Check section
-        // controller validity here before forwarding to IGListAdapter; if the
-        // section has been removed from the adapter's map, return a dequeued
-        // placeholder cell so the assertion is sidestepped and the next valid
-        // layout pass discards the placeholder.
+        // Guard against IGListAdapter's two separate assertions in
+        // `IGListAdapter+UICollectionView.m` for the cell path:
         //
-        // The placeholder is dequeued (rather than constructed directly) so it
-        // carries the reuse identifier UIKit requires of every cell returned
-        // from `collectionView:cellForItemAtIndexPath:` — see
-        // `UICollectionView.m:3930` ("The collection view's data source returned a
-        // cell without a reuseIdentifier."). The placeholder class is registered
-        // against the collection view in `setCollectionNode(_:)`.
+        //   1. ~line 47: `IGAssert(sectionController != nil, …)` — fires when the
+        //      requested section has been removed from the adapter's section map
+        //      but UICollectionView's layout still holds cached attributes for it
+        //      (triggered downstream of `IGListBatchUpdateTransaction._reload`'s
+        //      `layoutBelowIfNeeded` after a section-count fallback).
+        //
+        //   2. ~line 53: `IGAssert(cell != nil, @"Returned a nil cell at indexPath
+        //      %@ from section controller: %@")` — fires when the section
+        //      controller exists for the requested section but cannot produce a
+        //      cell for the requested item (typically because UIKit's stale layout
+        //      asks for an item index outside `sectionController.numberOfItems`).
+        //
+        // Both branches dequeue the registered placeholder cell so it carries the
+        // reuse identifier UIKit requires of every cell returned from this
+        // delegate — see `UICollectionView.m:3930` ("The collection view's data
+        // source returned a cell without a reuseIdentifier."). The placeholder
+        // class is registered against the collection view in
+        // `setCollectionNode(_:)`.
         guard let dataSource = dataSource,
-              sectionController(forSection: indexPath.section) != nil else {
+              let sectionController = sectionController(forSection: indexPath.section),
+              indexPath.item < sectionController.numberOfItems() else {
             return collectionView.dequeueReusableCell(
                 withReuseIdentifier: placeholderCellReuseIdentifier,
                 for: indexPath
@@ -516,24 +518,39 @@ private let placeholderSupplementaryViewReuseIdentifier = "TextureIGListKitExten
     func collectionView(_ collectionView: UICollectionView,
                         viewForSupplementaryElementOfKind kind: String,
                         at indexPath: IndexPath) -> UICollectionReusableView {
-        // Guard against stale layout attributes: after performUpdates reduces the
-        // section count, UICollectionView may still request supplementary views for
-        // sections that no longer exist in the adapter's section map. IGListAdapter
-        // throws NSInternalInconsistencyException in that case, so check validity
-        // here before forwarding.
+        // Guard against IGListAdapter's two separate assertions in
+        // `IGListAdapter+UICollectionView.m` for the supplementary-view path:
         //
-        // When the guard fires, the placeholder must be dequeued (not directly
-        // constructed) so it carries the reuse identifier UIKit requires of every
-        // supplementary view returned from this delegate — see `UICollectionView.m`
-        // ("The collection view's data source returned a … without a
-        // reuseIdentifier."). The placeholder class is registered against the
-        // header and footer kinds in `setCollectionNode(_:)`; for any other custom
-        // kind that has not been registered ahead of time, fall back to direct
-        // construction (UIKit may still assert there, but custom kinds are not
-        // exercised by the IGListKit + AsyncDisplayKit consumers this bridge
-        // supports).
+        //   1. ~line 83: `IGAssert(sectionController != nil, …)` —
+        //      fires when the requested section has been removed from the adapter's
+        //      section map but UICollectionView's layout still holds cached
+        //      attributes for it. Triggered downstream of
+        //      `IGListBatchUpdateTransaction._reload`'s `layoutBelowIfNeeded` after
+        //      the section-count fallback.
+        //
+        //   2. ~line 99: `IGAssert(view != nil, @"Returned a nil supplementary-view
+        //      from source %@ …")` — fires when the section controller exists for
+        //      the requested section but either has no `supplementaryViewSource`
+        //      installed or its source does not advertise the requested kind via
+        //      `supportedElementKinds()`. The section controller for an empty-state
+        //      slot (e.g. an "empty list" controller swapped in after a refresh
+        //      replaces a populated section with an empty placeholder) typically
+        //      does not provide headers/footers, while UIKit's cached layout
+        //      attributes still expect them — same staleness mode, different
+        //      assertion site.
+        //
+        // The placeholder dequeued for header and footer kinds carries the reuse
+        // identifier UIKit requires of every supplementary view returned from this
+        // delegate (`UICollectionView.m` — "The collection view's data source
+        // returned a … without a reuseIdentifier."). Both placeholder kinds are
+        // registered in `setCollectionNode(_:)`; for any other custom kind that has
+        // not been registered ahead of time, fall back to direct construction
+        // (UIKit may still assert there, but custom kinds are not exercised by the
+        // IGListKit + AsyncDisplayKit consumers this bridge supports).
         guard let dataSource = dataSource,
-              sectionController(forSection: indexPath.section) != nil,
+              let sectionController = sectionController(forSection: indexPath.section),
+              let supplementaryViewSource = sectionController.supplementaryViewSource,
+              supplementaryViewSource.supportedElementKinds().contains(kind),
               let view = dataSource.collectionView?(collectionView,
                                                    viewForSupplementaryElementOfKind: kind,
                                                    at: indexPath) else {

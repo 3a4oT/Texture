@@ -326,6 +326,139 @@ struct IGListAdapterBridgeTests {
         // validation, so the test can verify reuseIdentifier directly).
     }
 
+    /// `IGListAdapter+UICollectionView.m` has a second cell assertion distinct
+    /// from the section-removal one: when the section controller exists but
+    /// `sectionController.cellForItemAtIndex:` returns nil for the requested
+    /// item (typically because UIKit's stale layout asks for an item index
+    /// outside `sectionController.numberOfItems`), `IGListAdapter` asserts at
+    /// ~line 53 with "Returned a nil cell at indexPath … from section
+    /// controller: …".
+    ///
+    /// The bridge guard verifies `indexPath.item < sectionController.numberOfItems`
+    /// before forwarding, so this branch dequeues the placeholder cell instead
+    /// of letting IGListAdapter assert. The test drives a valid in-range section
+    /// (so `sectionController(forSection:)` returns a controller) and an
+    /// out-of-range item (so the second assertion path is the one we exercise).
+    @Test("bridge returns placeholder when item index is out of range for section controller")
+    func bridge_returnsPlaceholder_whenItemIndexIsOutOfRangeForSectionController() async {
+        let placeholderId = "TextureIGListKitExtensions.placeholderCell"
+
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 568))
+        let viewController = UIViewController()
+        window.rootViewController = viewController
+        window.makeKeyAndVisible()
+
+        let collectionNode = ASCollectionNode(collectionViewLayout: UICollectionViewFlowLayout())
+        collectionNode.frame = window.bounds
+        viewController.view.addSubnode(collectionNode)
+        _ = collectionNode.view
+
+        let adapter = ListAdapter(updater: ListAdapterUpdater(),
+                                  viewController: viewController,
+                                  workingRangeSize: 0)
+        let dataSource = TestListAdapterDataSource(items: [])
+        adapter.dataSource = dataSource
+        adapter.setCollectionNode(collectionNode)
+
+        dataSource.items = [TestItem(id: 1)]
+        await withCheckedContinuation { continuation in
+            adapter.performUpdates(animated: false) { _ in continuation.resume() }
+        }
+        collectionNode.view.layoutIfNeeded()
+        #expect(collectionNode.view.numberOfSections == 1)
+
+        let bridge = collectionNode.dataSource
+        guard let bridgeObj = bridge as? NSObject else {
+            Issue.record("collectionNode.dataSource is not NSObject — bridge not installed")
+            return
+        }
+        let sel = NSSelectorFromString("collectionView:cellForItemAtIndexPath:")
+        guard bridgeObj.responds(to: sel) else {
+            Issue.record("Bridge does not respond to cellForItemAtIndexPath:")
+            return
+        }
+        let imp = bridgeObj.method(for: sel)
+        typealias CellFn = @convention(c) (NSObject, Selector, UICollectionView, IndexPath) -> UICollectionViewCell
+        let fn = unsafeBitCast(imp, to: CellFn.self)
+        // Valid section (0), but `TestSectionController.numberOfItems` is the
+        // default 1, so item index 5 is out of range. Without the guard,
+        // IGListAdapter forwards to a section controller that returns nil and
+        // asserts at IGListAdapter+UICollectionView.m:53.
+        let outOfRangeIndexPath = IndexPath(item: 5, section: 0)
+        let cell = fn(bridgeObj, sel, collectionNode.view, outOfRangeIndexPath)
+        #expect(cell.reuseIdentifier == placeholderId,
+                "Bridge must dequeue the registered placeholder when item index is out of range for section controller; otherwise IGListAdapter asserts at IGListAdapter+UICollectionView.m:53")
+    }
+
+    /// `IGListAdapter+UICollectionView.m` has a second supplementary assertion
+    /// distinct from the one the section-removal test exercises: when the section
+    /// controller for an in-range index path exists but its
+    /// `supplementaryViewSource` is `nil` (or the source does not list the
+    /// requested kind in `supportedElementKinds()`), `IGListAdapter` asserts at
+    /// ~line 99 with "Returned a nil supplementary-view from source (null) …".
+    /// This happens in production when a refresh swaps a populated section
+    /// controller for an empty-state one (e.g. an "empty list" controller) that
+    /// does not provide headers — UIKit's cached layout attributes still expect a
+    /// header for that index, and the section controller's nil source produces a
+    /// nil view that IGListAdapter rejects.
+    ///
+    /// The test uses `TestSectionController`, which (unlike
+    /// `HeaderTestSectionController`) does not install a supplementary view
+    /// source. Calling the bridge selector at a valid in-range section must
+    /// short-circuit to the placeholder path instead of forwarding to
+    /// IGListAdapter.
+    @Test("bridge returns placeholder when section controller has no supplementary view source")
+    func bridge_returnsPlaceholder_whenSectionControllerHasNoSupplementarySource() async {
+        let placeholderId = "TextureIGListKitExtensions.placeholderSupplementaryView"
+
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 568))
+        let viewController = UIViewController()
+        window.rootViewController = viewController
+        window.makeKeyAndVisible()
+
+        let collectionNode = ASCollectionNode(collectionViewLayout: UICollectionViewFlowLayout())
+        collectionNode.frame = window.bounds
+        viewController.view.addSubnode(collectionNode)
+        _ = collectionNode.view
+
+        let adapter = ListAdapter(updater: ListAdapterUpdater(),
+                                  viewController: viewController,
+                                  workingRangeSize: 0)
+        let dataSource = TestListAdapterDataSource(items: [])
+        adapter.dataSource = dataSource
+        adapter.setCollectionNode(collectionNode)
+
+        dataSource.items = [TestItem(id: 1)]
+        await withCheckedContinuation { continuation in
+            adapter.performUpdates(animated: false) { _ in continuation.resume() }
+        }
+        collectionNode.view.layoutIfNeeded()
+        #expect(collectionNode.view.numberOfSections == 1)
+
+        let bridge = collectionNode.dataSource
+        guard let bridgeObj = bridge as? NSObject else {
+            Issue.record("collectionNode.dataSource is not NSObject — bridge not installed")
+            return
+        }
+        let sel = NSSelectorFromString("collectionView:viewForSupplementaryElementOfKind:atIndexPath:")
+        guard bridgeObj.responds(to: sel) else {
+            Issue.record("Bridge does not respond to viewForSupplementaryElementOfKind:atIndexPath:")
+            return
+        }
+        let imp = bridgeObj.method(for: sel)
+        typealias SupplementaryFn = @convention(c) (NSObject, Selector, UICollectionView, NSString, IndexPath) -> UICollectionReusableView
+        let fn = unsafeBitCast(imp, to: SupplementaryFn.self)
+        // Valid in-range index path. TestSectionController has no
+        // supplementaryViewSource, so without the bridge guard IGListAdapter
+        // forwards `viewForSupplementaryElementOfKind:` to nil and asserts.
+        let indexPath = IndexPath(item: 0, section: 0)
+        let view = fn(bridgeObj, sel, collectionNode.view,
+                      UICollectionView.elementKindSectionHeader as NSString,
+                      indexPath)
+        #expect(view.reuseIdentifier == placeholderId,
+                "Bridge must dequeue the registered placeholder when the section controller has no supplementaryViewSource; otherwise IGListAdapter asserts at IGListAdapter+UICollectionView.m:99")
+    }
+
     /// Verifies that `setCollectionNode(_:)` registers the bridge's placeholder
     /// supplementary view against both standard kinds (header and footer). The
     /// placeholder is what the stale-section guard in
