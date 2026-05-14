@@ -29,6 +29,16 @@ private let iglistkitGuardLog = OSLog(subsystem: "TextureIGListKitExtensions",
 /// "The collection view's data source returned a cell without a reuseIdentifier.").
 private let placeholderCellReuseIdentifier = "TextureIGListKitExtensions.placeholderCell"
 
+/// Reuse identifier for the placeholder supplementary view returned by the
+/// bridge's `collectionView:viewForSupplementaryElementOfKind:atIndexPath:`
+/// forwarder when the requested section has been removed from the adapter's
+/// section map. Registered against `UICollectionView.elementKindSectionHeader`
+/// and `UICollectionView.elementKindSectionFooter` in `setCollectionNode(_:)`
+/// so the guard can route through
+/// `dequeueReusableSupplementaryView(ofKind:withReuseIdentifier:for:)` and
+/// satisfy the same UIKit reuse-identifier contract that applies to cells.
+private let placeholderSupplementaryViewReuseIdentifier = "TextureIGListKitExtensions.placeholderSupplementaryView"
+
 /// Pure Swift data source bridge between IGListKit and AsyncDisplayKit
 ///
 /// ## Thread Safety (based on AsyncDisplayKit documentation)
@@ -511,11 +521,30 @@ private let placeholderCellReuseIdentifier = "TextureIGListKitExtensions.placeho
         // sections that no longer exist in the adapter's section map. IGListAdapter
         // throws NSInternalInconsistencyException in that case, so check validity
         // here before forwarding.
+        //
+        // When the guard fires, the placeholder must be dequeued (not directly
+        // constructed) so it carries the reuse identifier UIKit requires of every
+        // supplementary view returned from this delegate — see `UICollectionView.m`
+        // ("The collection view's data source returned a … without a
+        // reuseIdentifier."). The placeholder class is registered against the
+        // header and footer kinds in `setCollectionNode(_:)`; for any other custom
+        // kind that has not been registered ahead of time, fall back to direct
+        // construction (UIKit may still assert there, but custom kinds are not
+        // exercised by the IGListKit + AsyncDisplayKit consumers this bridge
+        // supports).
         guard let dataSource = dataSource,
               sectionController(forSection: indexPath.section) != nil,
               let view = dataSource.collectionView?(collectionView,
                                                    viewForSupplementaryElementOfKind: kind,
                                                    at: indexPath) else {
+            if kind == UICollectionView.elementKindSectionHeader
+                || kind == UICollectionView.elementKindSectionFooter {
+                return collectionView.dequeueReusableSupplementaryView(
+                    ofKind: kind,
+                    withReuseIdentifier: placeholderSupplementaryViewReuseIdentifier,
+                    for: indexPath
+                )
+            }
             return UICollectionReusableView()
         }
         return view
@@ -829,20 +858,33 @@ extension ListAdapter {
 
         if collectionNode.isNodeLoaded {
             self.collectionView = collectionNode.view as? UICollectionView
-            // Register the bridge's placeholder cell so the stale-section guard in
-            // collectionView:cellForItemAtIndexPath: can return a dequeued cell that
-            // satisfies UIKit's reuseIdentifier requirement.
-            (collectionNode.view as? UICollectionView)?
-                .register(UICollectionViewCell.self,
-                          forCellWithReuseIdentifier: placeholderCellReuseIdentifier)
+            // Register the bridge's placeholder cell and supplementary views so the
+            // stale-section guards in collectionView:cellForItemAtIndexPath: and
+            // collectionView:viewForSupplementaryElementOfKind:atIndexPath: can return
+            // dequeued items that satisfy UIKit's reuseIdentifier requirement.
+            ListAdapter.registerBridgePlaceholders(on: collectionNode.view as? UICollectionView)
         } else {
             collectionNode.onDidLoad { [weak self] node in
                 self?.collectionView = node.view as? UICollectionView
-                (node.view as? UICollectionView)?
-                    .register(UICollectionViewCell.self,
-                              forCellWithReuseIdentifier: placeholderCellReuseIdentifier)
+                ListAdapter.registerBridgePlaceholders(on: node.view as? UICollectionView)
             }
         }
+    }
+
+    /// Registers the placeholder cell and supplementary views used by the bridge's
+    /// stale-section guards. Called from both branches of `setCollectionNode(_:)` —
+    /// the immediately-loaded path and the deferred `onDidLoad` path.
+    @MainActor
+    private static func registerBridgePlaceholders(on view: UICollectionView?) {
+        guard let view = view else { return }
+        view.register(UICollectionViewCell.self,
+                      forCellWithReuseIdentifier: placeholderCellReuseIdentifier)
+        view.register(UICollectionReusableView.self,
+                      forSupplementaryViewOfKind: UICollectionView.elementKindSectionHeader,
+                      withReuseIdentifier: placeholderSupplementaryViewReuseIdentifier)
+        view.register(UICollectionReusableView.self,
+                      forSupplementaryViewOfKind: UICollectionView.elementKindSectionFooter,
+                      withReuseIdentifier: placeholderSupplementaryViewReuseIdentifier)
     }
 
     /// Performs `performUpdates(animated:completion:)` after a pre-flight check that the

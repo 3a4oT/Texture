@@ -228,6 +228,18 @@ struct IGListAdapterBridgeTests {
     /// This test calls the bridge's Interop selector directly with an index that
     /// is outside the adapter's current section map — the call must return a
     /// placeholder view without crashing.
+    ///
+    /// A non-standard supplementary kind is used so the bridge takes the
+    /// legacy `UICollectionReusableView()` fallback path that handles kinds
+    /// the placeholder isn't registered for. The header/footer dequeue path is
+    /// covered by `setCollectionNode_registersPlaceholderSupplementaryForBothKinds`
+    /// — those two paths cannot be exercised here because
+    /// `dequeueReusableSupplementaryView` queries the flow layout's
+    /// `layoutAttributesForSupplementaryView(ofKind:at:)` and raises
+    /// "request for layout attributes … in section N when there are only M
+    /// sections" for out-of-range index paths (an artificial precondition
+    /// constructed only by this direct-selector test; production UIKit never
+    /// calls the bridge with an index the layout has not approved).
     @Test("bridge returns placeholder view for stale supplementary section after removal")
     func bridge_returnsPlaceholder_forStaleSuppViewAfterSectionRemoval() async {
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 568))
@@ -281,12 +293,101 @@ struct IGListAdapterBridgeTests {
         typealias SupplementaryFn = @convention(c) (NSObject, Selector, UICollectionView, NSString, IndexPath) -> UICollectionReusableView
         let fn = unsafeBitCast(imp, to: SupplementaryFn.self)
         let staleIndexPath = IndexPath(item: 0, section: 2)
+        // Use a non-header/footer kind so the bridge takes its legacy
+        // `UICollectionReusableView()` fallback path (header and footer route
+        // through `dequeueReusableSupplementaryView`, which the unit-test
+        // environment cannot exercise for out-of-range index paths — see
+        // docstring above).
+        let customKind = "TextureIGListKitExtensions.test.customSupplementaryKind"
         // Must not crash — returns a zero-size placeholder instead of throwing.
         let view = fn(bridgeObj, sel, collectionNode.view,
-                      UICollectionView.elementKindSectionHeader as NSString,
+                      customKind as NSString,
                       staleIndexPath)
         #expect(view is UICollectionReusableView,
                 "Bridge must return a placeholder view for a stale section, not crash via IGListAdapter")
+        // Note: the supplementary-view guard, in production, routes through
+        // `dequeueReusableSupplementaryView(ofKind:withReuseIdentifier:for:)` so the
+        // returned view carries a reuse identifier (same UIKit contract that
+        // applies to cells; `UICollectionView.m` asserts when a supplementary view
+        // returned from this delegate has none). That code path is not exercisable
+        // in this unit test: UIKit's dequeue implementation queries the layout's
+        // `layoutAttributesForSupplementaryView(ofKind:at:)` and raises
+        // "request for layout attributes for supplementary view … in section N
+        // when there are only M sections in the collection view" when the
+        // requested section is out of range. The test reaches the guard only by
+        // calling the bridge selector with an out-of-range index path
+        // (`section: 2` while `collectionView.numberOfSections == 1`), which is
+        // an artificial precondition — in production UIKit only calls this
+        // delegate for index paths the layout has already approved, so the dequeue
+        // path passes layout validation and the placeholder reuse identifier
+        // sticks. Cell-side coverage in
+        // `bridge_returnsPlaceholder_forStaleCellAfterSectionRemoval` exercises
+        // the equivalent dequeue path (cells don't go through the same layout
+        // validation, so the test can verify reuseIdentifier directly).
+    }
+
+    /// Verifies that `setCollectionNode(_:)` registers the bridge's placeholder
+    /// supplementary view against both standard kinds (header and footer). The
+    /// placeholder is what the stale-section guard in
+    /// `collectionView:viewForSupplementaryElementOfKind:atIndexPath:` dequeues to
+    /// satisfy UIKit's reuseIdentifier contract when the requested section has
+    /// been removed from the adapter's section map.
+    ///
+    /// Calling `dequeueReusableSupplementaryView(ofKind:withReuseIdentifier:for:)`
+    /// directly with a valid in-range index path (section 0) sidesteps the layout
+    /// validation that prevents an out-of-range index from being verified inside a
+    /// unit test (`UICollectionViewFlowLayout` asserts "request for layout
+    /// attributes … in section N when there are only M sections" for out-of-range
+    /// queries). In production UIKit only calls the bridge for index paths the
+    /// layout has already approved, so the dequeue path always passes that
+    /// validation.
+    @Test("setCollectionNode registers placeholder for header and footer supplementary kinds")
+    func setCollectionNode_registersPlaceholderSupplementaryForBothKinds() async {
+        let placeholderId = "TextureIGListKitExtensions.placeholderSupplementaryView"
+
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 320, height: 568))
+        let viewController = UIViewController()
+        window.rootViewController = viewController
+        window.makeKeyAndVisible()
+
+        let collectionNode = ASCollectionNode(collectionViewLayout: UICollectionViewFlowLayout())
+        collectionNode.frame = window.bounds
+        viewController.view.addSubnode(collectionNode)
+        _ = collectionNode.view
+
+        let adapter = ListAdapter(updater: ListAdapterUpdater(),
+                                  viewController: viewController,
+                                  workingRangeSize: 0)
+        // Initial items intentionally empty so the bridge wire-up in
+        // setCollectionNode does not race with the first IGListAdapter reload — the
+        // same setup pattern the other regression tests in this file use.
+        let dataSource = TestListAdapterDataSource(items: [])
+        adapter.dataSource = dataSource
+        adapter.setCollectionNode(collectionNode)
+
+        dataSource.items = [TestItem(id: 1)]
+        await withCheckedContinuation { continuation in
+            adapter.performUpdates(animated: false) { _ in continuation.resume() }
+        }
+        collectionNode.view.layoutIfNeeded()
+        #expect(collectionNode.view.numberOfSections == 1)
+
+        let indexPath = IndexPath(item: 0, section: 0)
+        let headerView = collectionNode.view.dequeueReusableSupplementaryView(
+            ofKind: UICollectionView.elementKindSectionHeader,
+            withReuseIdentifier: placeholderId,
+            for: indexPath
+        )
+        #expect(headerView.reuseIdentifier == placeholderId,
+                "setCollectionNode must register placeholder for elementKindSectionHeader; dequeue otherwise throws 'no view registered for identifier'")
+
+        let footerView = collectionNode.view.dequeueReusableSupplementaryView(
+            ofKind: UICollectionView.elementKindSectionFooter,
+            withReuseIdentifier: placeholderId,
+            for: indexPath
+        )
+        #expect(footerView.reuseIdentifier == placeholderId,
+                "setCollectionNode must register placeholder for elementKindSectionFooter; dequeue otherwise throws 'no view registered for identifier'")
     }
 
     /// After `performUpdates` removes sections, IGListKit's internal section-count
